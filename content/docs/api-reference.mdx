@@ -1,0 +1,399 @@
+---
+title: API Reference
+---
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# AnimeVerse API Reference
+
+Welcome to the official API documentation for AnimeVerse. This guide provides detailed information about all available endpoints.
+
+---
+
+## Healthcheck
+
+<Card title="GET /v1/healthcheck">
+
+This endpoint allows you to check the status and health of the API. It's useful for monitoring and verifying that the service is running.
+
+#### Responses
+
+<Tabs items={['200 OK', 'Example Request']}>
+  <Tab value="200 OK">
+    This response indicates that the API is available and running correctly.
+
+    ```json title="Response Body"
+    {
+      "status": "available",
+      "system_info": {
+        "environment": "development",
+        "version": "1.0.0"
+      }
+    }
+    ```
+
+  </Tab>
+  <Tab value="Example Request">
+    ```bash title="cURL"
+    curl -i localhost:4000/v1/healthcheck
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+---
+
+## Animes
+
+This resource provides access to the anime data in the AnimeVerse database.
+
+<Card title="GET /v1/animes">
+
+Retrieves a paginated list of all animes. The list can be filtered by title and genres.
+
+#### Query Parameters
+
+| Parameter  | Type                       | Description                                                                                               | Default |
+| ---------- | -------------------------- | --------------------------------------------------------------------------------------------------------- | ------- |
+| `title`    | string                     | Performs a case-insensitive, partial-word search on the anime's title.                                    | `""`      |
+| `genres`   | comma-separated string     | Filters for animes that contain ALL of the specified genres. The search is case-sensitive.                | `[]`      |
+| `page`     | integer                    | The page number to retrieve (between 1 and 1000).                                                         | `1`     |
+| `page_size`| integer                    | The number of records to return per page (between 1 and 100).                                             | `20`    |
+
+#### Responses & Examples
+
+<Tabs items={['Success', 'Filter by Title', 'Filter by Genres', 'Combined Filters', 'Custom Pagination', 'Validation Error']}>
+  <Tab value="Success">
+    A successful response returns a `200 OK` status with a list of animes and pagination metadata.
+
+    ```json title="Response Body"
+    {
+      "@metadata": {
+        "current_page": 1,
+        "page_size": 20,
+        "first_page": 1,
+        "last_page": 1,
+        "total_records": 3
+      },
+      "animes": [
+        {
+          "id": 5114,
+          "title": "Fullmetal Alchemist: Brotherhood",
+          "total_episodes": 64,
+          "genres": ["Action", "Military", "Adventure", "Comedy", "Drama", "Magic", "Fantasy"],
+          "studios": ["Bones"]
+        },
+        {
+          "id": 16498,
+          "title": "Attack on Titan",
+          "total_episodes": 87,
+          "genres": ["Action", "Military", "Mystery", "Super Power", "Drama", "Fantasy"],
+          "studios": ["Wit Studio", "MAPPA"]
+        }
+      ]
+    }
+    ```
+    ```bash title="cURL Request"
+    # Get the first page with the default page size
+    curl -i "localhost:4000/v1/animes"
+    ```
+  </Tab>
+  <Tab value="Filter by Title">
+    Searching for animes with "titan" in the title.
+
+    ```bash title="cURL Request"
+    curl -i "localhost:4000/v1/animes?title=titan"
+    ```
+  </Tab>
+  <Tab value="Filter by Genres">
+    Filtering for animes that include both "Action" and "Drama".
+
+    ```bash title="cURL Request"
+    curl -i "localhost:4000/v1/animes?genres=Action,Drama"
+    ```
+  </Tab>
+  <Tab value="Combined Filters">
+    Combining title and genre filters.
+
+    ```bash title="cURL Request"
+    curl -i "localhost:4000/v1/animes?title=alchemist&genres=Magic"
+    ```
+  </Tab>
+  <Tab value="Custom Pagination">
+    Requesting the second page with a page size of 1.
+
+    ```bash title="cURL Request"
+    curl -i "localhost:4000/v1/animes?page=2&page_size=1"
+    ```
+  </Tab>
+  <Tab value="Validation Error">
+    A `422 Unprocessable Entity` is returned if query parameters are invalid.
+
+    ```json title="Response Body"
+    {
+      "error": {
+        "page": "must be greater than zero"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    curl -i "localhost:4000/v1/animes?page=0"
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+<hr className="my-8" />
+
+<Card title="POST /v1/animes">
+
+Creates a new anime record in the database.
+
+#### Request Body
+
+The request body must be a JSON object with the following fields:
+
+| Field                  | Type      | Description                                     | Required |
+| ---------------------- | --------- | ----------------------------------------------- | -------- |
+| `id`                   | integer   | The MyAnimeList ID of the anime.                | Yes      |
+| `title`                | string    | The main title of the anime.                    | Yes      |
+| `synopsis`             | string    | A detailed plot summary.                        | Yes      |
+| `cover_image_url`      | string    | URL for the cover art.                          | Yes      |
+| `total_episodes`       | integer   | Total number of episodes (`>= 0`).              | Yes      |
+| `status`               | string    | Airing status (e.g., "Finished Airing").        | Yes      |
+| `release_date`         | string    | Initial air date in `YYYY-MM-DD` format.        | Yes      |
+| `rating`               | string    | Age rating (e.g., "PG-13").                     | Yes      |
+| `score`                | number    | MyAnimeList score (`0` to `10`).                | Yes      |
+| `genres`               | []string  | A list of genres.                               | Yes      |
+| `studios`              | []string  | A list of animation studios.                    | Yes      |
+| `broadcast_information`| string    | Broadcast details for airing shows.             | Yes      |
+
+#### Responses & Examples
+
+<Tabs items={['201 Created', '422 Validation Error']}>
+  <Tab value="201 Created">
+    A successful creation returns a `201 Created` status and the newly created anime object.
+
+    ```json title="Response Body"
+    {
+      "anime": {
+        "id": 1535,
+        "title": "Death Note",
+        "synopsis": "A shinigami, as a god of death, can kill any person...",
+        "cover_image_url": "https://cdn.myanimelist.net/images/anime/9/9453.jpg",
+        "total_episodes": 37,
+        "status": "Finished Airing",
+        "release_date": "2006-10-04T00:00:00Z",
+        "rating": "R - 17+ (violence & profanity)",
+        "score": 8.62,
+        "genres": ["Mystery", "Police", "Psychological", "Supernatural", "Thriller"],
+        "studios": ["Madhouse"],
+        "broadcast_information": "Wednesdays at 00:56 (JST)"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    BODY='{
+        "id": 1535,
+        "title": "Death Note",
+        "synopsis": "A shinigami, as a god of death, can kill any person...",
+        "cover_image_url": "https://cdn.myanimelist.net/images/anime/9/9453.jpg",
+        "total_episodes": 37,
+        "status": "Finished Airing",
+        "release_date": "2006-10-04",
+        "rating": "R - 17+ (violence & profanity)",
+        "score": 8.62,
+        "genres": ["Mystery", "Police", "Psychological", "Supernatural", "Thriller"],
+        "studios": ["Madhouse"],
+        "broadcast_information": "Wednesdays at 00:56 (JST)"
+    }'
+
+    curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes
+    ```
+  </Tab>
+  <Tab value="422 Validation Error">
+    If the request body is invalid, a `422 Unprocessable Entity` response is returned with details.
+
+    ```json title="Response Body"
+    {
+      "error": {
+        "score": "must not be greater than 10",
+        "title": "must be provided"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    # Request with missing title and invalid score
+    curl -i -H "Content-Type: application/json" -d '{"id": 999, "title": "", "score": 11}' localhost:4000/v1/animes
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+<hr className="my-8" />
+
+<Card title="GET /v1/animes/:id">
+
+Retrieves the details of a specific anime by its ID.
+
+#### URL Parameters
+
+| Parameter | Type    | Description                      |
+| --------- | ------- | -------------------------------- |
+| `:id`     | integer | The unique ID of the anime.      |
+
+#### Responses & Examples
+
+<Tabs items={['200 OK', '404 Not Found']}>
+  <Tab value="200 OK">
+    A successful response returns a `200 OK` status and the anime object.
+
+    ```json title="Response Body"
+    {
+      "anime": {
+        "id": 5114,
+        "title": "Fullmetal Alchemist: Brotherhood",
+        "synopsis": "After a horrific alchemy experiment goes wrong...",
+        "cover_image_url": "https://cdn.myanimelist.net/images/anime/1223/96541.jpg",
+        "total_episodes": 64,
+        "status": "Finished Airing",
+        "release_date": "2009-04-05T00:00:00Z",
+        "rating": "R - 17+ (violence & profanity)",
+        "score": 9.14,
+        "genres": ["Action", "Military", "Adventure", "Comedy", "Drama", "Magic", "Fantasy"],
+        "studios": ["Bones"],
+        "broadcast_information": "Sundays at 17:00 (JST)"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/animes/5114
+    ```
+  </Tab>
+  <Tab value="404 Not Found">
+    If an anime with the specified ID does not exist, a `404 Not Found` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": "the requested resource could not be found"
+    }
+    ```
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/animes/999999
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+<hr className="my-8" />
+
+<Card title="PATCH /v1/animes/:id">
+
+Performs a partial update on an anime's details. Only the fields provided in the request body will be updated.
+
+#### URL Parameters
+
+| Parameter | Type    | Description                      |
+| --------- | ------- | -------------------------------- |
+| `:id`     | integer | The unique ID of the anime to update. |
+
+#### Request Body
+
+The request body is a JSON object containing any of the fields from the `POST /v1/animes` endpoint. All fields are optional.
+
+#### Responses & Examples
+
+<Tabs items={['200 OK', '404 Not Found', '422 Validation Error']}>
+  <Tab value="200 OK">
+    A successful update returns a `200 OK` status and the fully updated anime object.
+
+    ```json title="Response Body"
+    {
+      "anime": {
+        "id": 5114,
+        "title": "Fullmetal Alchemist: Brotherhood (Updated Score)",
+        "score": 9.15,
+        // ... other fields remain unchanged ...
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    # Update the title and score of anime with ID 5114
+    BODY='{
+        "title": "Fullmetal Alchemist: Brotherhood (Updated Score)",
+        "score": 9.15
+    }'
+
+    curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes/5114
+    ```
+  </Tab>
+  <Tab value="404 Not Found">
+    If an anime with the specified ID does not exist, a `404 Not Found` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": "the requested resource could not be found"
+    }
+    ```
+    ```bash title="cURL Request"
+    curl -i -X PATCH -H "Content-Type: application/json" -d '{"score": 9.0}' localhost:4000/v1/animes/999999
+    ```
+  </Tab>
+  <Tab value="422 Validation Error">
+    If the update data is invalid, a `422 Unprocessable Entity` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": {
+        "score": "must not be greater than 10"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    curl -i -X PATCH -H "Content-Type: application/json" -d '{"score": 12}' localhost:4000/v1/animes/5114
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+<hr className="my-8" />
+
+<Card title="DELETE /v1/animes/:id">
+
+Deletes a specific anime from the database by its ID.
+
+#### URL Parameters
+
+| Parameter | Type    | Description                      |
+| --------- | ------- | -------------------------------- |
+| `:id`     | integer | The unique ID of the anime to delete. |
+
+#### Responses & Examples
+
+<Tabs items={['200 OK', '404 Not Found']}>
+  <Tab value="200 OK">
+    A successful deletion returns a `200 OK` status and a confirmation message.
+
+    ```json title="Response Body"
+    {
+      "message": "anime successfully deleted"
+    }
+    ```
+    ```bash title="cURL Request"
+    curl -i -X DELETE localhost:4000/v1/animes/1535
+    ```
+  </Tab>
+  <Tab value="404 Not Found">
+    If an anime with the specified ID does not exist, a `404 Not Found` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": "the requested resource could not be found"
+    }
+    ```
+    ```bash title="cURL Request"
+    curl -i -X DELETE localhost:4000/v1/animes/999999
+    ```
+  </Tab>
+</Tabs>
+</Card>
