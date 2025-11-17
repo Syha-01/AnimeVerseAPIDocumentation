@@ -49,22 +49,23 @@ This resource provides access to the anime data in the AnimeVerse database.
 
 <Card title="GET /v1/animes">
 
-Retrieves a paginated list of all animes. The list can be filtered by title and genres.
+Retrieves a paginated and sortable list of all animes. The list can also be filtered by title and genres.
 
 #### Query Parameters
 
-| Parameter  | Type                       | Description                                                                                               | Default |
-| ---------- | -------------------------- | --------------------------------------------------------------------------------------------------------- | ------- |
-| `title`    | string                     | Performs a case-insensitive, partial-word search on the anime's title.                                    | `""`      |
-| `genres`   | comma-separated string     | Filters for animes that contain ALL of the specified genres. The search is case-sensitive.                | `[]`      |
-| `page`     | integer                    | The page number to retrieve (between 1 and 1000).                                                         | `1`     |
-| `page_size`| integer                    | The number of records to return per page (between 1 and 100).                                             | `20`    |
+| Parameter  | Type                       | Description                                                                                                                              | Default |
+| ---------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `title`    | string                     | Performs a case-insensitive, partial-word search on the anime's title.                                                                   | `""`      |
+| `genres`   | comma-separated string     | Filters for animes that contain ALL of the specified genres. The search is case-sensitive.                                               | `[]`      |
+| `page`     | integer                    | The page number to retrieve (between 1 and 1000).                                                                                        | `1`     |
+| `page_size`| integer                    | The number of records to return per page (between 1 and 100).                                                                            | `20`    |
+| `sort`     | string                     | Specifies the sort order. Prefix with a `-` for descending order. Allowed values: `id`, `-id`, `title`, `-title`, `score`, `-score`, `release_date`, `-release_date`. | `id`    |
 
 #### Responses & Examples
 
-<Tabs items={['Success', 'Filter by Title', 'Filter by Genres', 'Combined Filters', 'Custom Pagination', 'Validation Error']}>
+<Tabs items={['Success', 'Filtering', 'Pagination', 'Sorting', 'Validation Error']}>
   <Tab value="Success">
-    A successful response returns a `200 OK` status with a list of animes and pagination metadata.
+    A successful response returns a `200 OK` status with a list of animes and metadata.
 
     ```json title="Response Body"
     {
@@ -76,68 +77,63 @@ Retrieves a paginated list of all animes. The list can be filtered by title and 
         "total_records": 3
       },
       "animes": [
-        {
-          "id": 5114,
-          "title": "Fullmetal Alchemist: Brotherhood",
-          "total_episodes": 64,
-          "genres": ["Action", "Military", "Adventure", "Comedy", "Drama", "Magic", "Fantasy"],
-          "studios": ["Bones"]
-        },
-        {
-          "id": 16498,
-          "title": "Attack on Titan",
-          "total_episodes": 87,
-          "genres": ["Action", "Military", "Mystery", "Super Power", "Drama", "Fantasy"],
-          "studios": ["Wit Studio", "MAPPA"]
-        }
+        // ... array of anime objects
       ]
     }
     ```
     ```bash title="cURL Request"
-    # Get the first page with the default page size
+    # Get the first page with default settings (sort by id asc)
     curl -i "localhost:4000/v1/animes"
     ```
   </Tab>
-  <Tab value="Filter by Title">
-    Searching for animes with "titan" in the title.
+  <Tab value="Filtering">
+    You can combine filters to narrow down results.
 
     ```bash title="cURL Request"
-    curl -i "localhost:4000/v1/animes?title=titan"
-    ```
-  </Tab>
-  <Tab value="Filter by Genres">
-    Filtering for animes that include both "Action" and "Drama".
-
-    ```bash title="cURL Request"
-    curl -i "localhost:4000/v1/animes?genres=Action,Drama"
-    ```
-  </Tab>
-  <Tab value="Combined Filters">
-    Combining title and genre filters.
-
-    ```bash title="cURL Request"
+    # Search for animes with 'alchemist' in the title AND the 'Magic' genre
     curl -i "localhost:4000/v1/animes?title=alchemist&genres=Magic"
     ```
   </Tab>
-  <Tab value="Custom Pagination">
-    Requesting the second page with a page size of 1.
+  <Tab value="Pagination">
+    Control which records are returned using `page` and `page_size`.
 
     ```bash title="cURL Request"
+    # Request the second page with a page size of 1
     curl -i "localhost:4000/v1/animes?page=2&page_size=1"
     ```
   </Tab>
+  <Tab value="Sorting">
+    Control the order of the results using the `sort` parameter.
+
+    <p><strong>Sort by title in ascending order (A-Z):</strong></p>
+    ```bash title="cURL Request"
+    curl -i "localhost:4000/v1/animes?sort=title"
+    ```
+
+    <p className="mt-4"><strong>Sort by score in descending order (highest score first):</strong></p>
+    ```bash title="cURL Request"
+    curl -i "localhost:4000/v1/animes?sort=-score"
+    ```
+
+    <p className="mt-4"><strong>Combine sorting and pagination:</strong></p>
+    ```bash title="cURL Request"
+    # Get the highest-scoring animes, 2 per page
+    curl -i "localhost:4000/v1/animes?sort=-score&page_size=2"
+    ```
+  </Tab>
   <Tab value="Validation Error">
-    A `422 Unprocessable Entity` is returned if query parameters are invalid.
+    A `422 Unprocessable Entity` is returned if any query parameters are invalid.
 
     ```json title="Response Body"
     {
       "error": {
-        "page": "must be greater than zero"
+        "sort": "invalid sort value"
       }
     }
     ```
     ```bash title="cURL Request"
-    curl -i "localhost:4000/v1/animes?page=0"
+    # Request with an invalid sort parameter
+    curl -i "localhost:4000/v1/animes?sort=invalid_field"
     ```
   </Tab>
 </Tabs>
