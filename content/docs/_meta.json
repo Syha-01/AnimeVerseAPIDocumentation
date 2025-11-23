@@ -1,3 +1,6 @@
 {
-  "pages": ["api-reference"]
+  "index": "Introduction",
+  "errors": "Errors & Limits",
+  "animes": "Animes",
+  "user-anime-list": "User Anime List"
 }

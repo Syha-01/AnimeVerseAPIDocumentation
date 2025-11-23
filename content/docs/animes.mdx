@@ -1,49 +1,11 @@
 ---
-title: API Reference
+title: Animes
+description: Manage and retrieve anime information.
 ---
 import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-# AnimeVerse API Reference
-
-Welcome to the official API documentation for AnimeVerse. This guide provides detailed information about all available endpoints.
-
----
-
-## Healthcheck
-
-<Card title="GET /v1/healthcheck">
-
-This endpoint allows you to check the status and health of the API. It's useful for monitoring and verifying that the service is running.
-
-#### Responses
-
-<Tabs items={['200 OK', 'Example Request']}>
-  <Tab value="200 OK">
-    This response indicates that the API is available and running correctly.
-
-    ```json title="Response Body"
-    {
-      "status": "available",
-      "system_info": {
-        "environment": "development",
-        "version": "1.0.0"
-      }
-    }
-    ```
-
-  </Tab>
-  <Tab value="Example Request">
-    ```bash title="cURL"
-    curl -i localhost:4000/v1/healthcheck
-    ```
-  </Tab>
-</Tabs>
-</Card>
-
----
-
-## Animes
+# Animes
 
 This resource provides access to the anime data in the AnimeVerse database.
 
@@ -220,7 +182,13 @@ The request body must be a JSON object with the following fields:
     ```
     ```bash title="cURL Request"
     # Request with missing title and invalid score
-    curl -i -H "Content-Type: application/json" -d '{"id": 999, "title": "", "score": 11}' localhost:4000/v1/animes
+    BODY='{
+      "id": 999,
+      "title": "",
+      "score": 11
+    }'
+
+    curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes
     ```
   </Tab>
 </Tabs>
@@ -332,7 +300,11 @@ The request body is a JSON object containing any of the fields from the `POST /v
     }
     ```
     ```bash title="cURL Request"
-    curl -i -X PATCH -H "Content-Type: application/json" -d '{"score": 9.0}' localhost:4000/v1/animes/999999
+    BODY='{
+      "score": 9.0
+    }'
+
+    curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes/999999
     ```
   </Tab>
   <Tab value="422 Validation Error">
@@ -346,7 +318,11 @@ The request body is a JSON object containing any of the fields from the `POST /v
     }
     ```
     ```bash title="cURL Request"
-    curl -i -X PATCH -H "Content-Type: application/json" -d '{"score": 12}' localhost:4000/v1/animes/5114
+    BODY='{
+      "score": 12
+    }'
+
+    curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes/5114
     ```
   </Tab>
 </Tabs>

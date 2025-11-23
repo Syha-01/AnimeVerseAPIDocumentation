@@ -1,0 +1,204 @@
+---
+title: User Anime List
+description: Manage user-specific anime lists.
+---
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# User Anime List
+
+Manage user-specific anime lists.
+
+<Card title="GET /v1/user_anime_list">
+
+Retrieves a paginated list of user anime entries. Can be filtered by user ID and status.
+
+#### Query Parameters
+
+| Parameter  | Type    | Description                                                                                                                              | Default |
+| ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `user_id`  | string  | Filter by the User ID.                                                                                                                   | `""`    |
+| `status`   | string  | Filter by the watching status (e.g., "watching", "completed").                                                                           | `""`    |
+| `page`     | integer | The page number to retrieve.                                                                                                             | `1`     |
+| `page_size`| integer | The number of records to return per page.                                                                                                | `20`    |
+| `sort`     | string  | Specifies the sort order. Allowed values: `id`, `user_id`, `anime_id`, `status`, `score`, `created_at` (and their `-` descending variants). | `id`    |
+
+#### Responses & Examples
+
+<Tabs items={['Success', 'Filtering']}>
+  <Tab value="Success">
+    ```json title="Response Body"
+    {
+      "@metadata": {
+        "current_page": 1,
+        "page_size": 20,
+        "first_page": 1,
+        "last_page": 1,
+        "total_records": 5
+      },
+      "user_anime_lists": [
+        {
+          "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+          "user_id": "user123",
+          "anime_id": 5114,
+          "status": "watching",
+          "current_episode": 10,
+          "score": 9,
+          "started_watching_date": "2023-01-01T00:00:00Z",
+          "finished_watching_date": "0001-01-01T00:00:00Z",
+          "created_at": "2023-01-01T10:00:00Z",
+          "version": 1
+        }
+      ]
+    }
+    ```
+    ```bash title="cURL Request"
+    curl -i "localhost:4000/v1/user_anime_list"
+    ```
+  </Tab>
+  <Tab value="Filtering">
+    ```bash title="cURL Request"
+    # Get 'watching' list for a specific user
+    curl -i "localhost:4000/v1/user_anime_list?user_id=user123&status=watching"
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+<hr className="my-8" />
+
+<Card title="POST /v1/user_anime_list">
+
+Creates a new entry in a user's anime list.
+
+#### Request Body
+
+| Field                    | Type    | Description                                      | Required |
+| ------------------------ | ------- | ------------------------------------------------ | -------- |
+| `user_id`                | string  | The ID of the user.                              | Yes      |
+| `anime_id`               | integer | The ID of the anime.                             | Yes      |
+| `status`                 | string  | Watching status (e.g., "watching", "completed"). | Yes      |
+| `current_episode`        | integer | The last episode watched.                        | Yes      |
+| `score`                  | integer | User's score (0-10).                             | Yes      |
+| `started_watching_date`  | string  | Date started (`YYYY-MM-DD`).                     | No       |
+| `finished_watching_date` | string  | Date finished (`YYYY-MM-DD`).                    | No       |
+
+#### Responses & Examples
+
+<Tabs items={['201 Created', '422 Validation Error']}>
+  <Tab value="201 Created">
+    ```json title="Response Body"
+    {
+      "user_anime_list": {
+        "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+        "user_id": "user123",
+        "anime_id": 5114,
+        "status": "watching",
+        "current_episode": 1,
+        "score": 0,
+        // ...
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    BODY='{
+      "user_id": "user123",
+      "anime_id": 5114,
+      "status": "watching",
+      "current_episode": 1,
+      "score": 0,
+      "started_watching_date": "2023-10-27"
+    }'
+    curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list
+    ```
+  </Tab>
+  <Tab value="422 Validation Error">
+    ```json title="Response Body"
+    {
+      "error": {
+        "status": "must be provided"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+<hr className="my-8" />
+
+<Card title="GET /v1/user_anime_list/:id">
+
+Retrieves a specific user anime list entry by its UUID.
+
+#### URL Parameters
+
+| Parameter | Type   | Description                                      |
+| --------- | ------ | ------------------------------------------------ |
+| `:id`     | string | The UUID of the user anime list entry.           |
+
+#### Responses & Examples
+
+<Tabs items={['200 OK', '404 Not Found']}>
+  <Tab value="200 OK">
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+    ```
+  </Tab>
+  <Tab value="404 Not Found">
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/user_anime_list/invalid-uuid
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+<hr className="my-8" />
+
+<Card title="PATCH /v1/user_anime_list/:id">
+
+Updates an existing user anime list entry.
+
+#### URL Parameters
+
+| Parameter | Type   | Description                                      |
+| --------- | ------ | ------------------------------------------------ |
+| `:id`     | string | The UUID of the user anime list entry.           |
+
+#### Request Body
+
+Fields to update (all optional): `status`, `current_episode`, `score`, `started_watching_date`, `finished_watching_date`.
+
+#### Responses & Examples
+
+<Tabs items={['200 OK']}>
+  <Tab value="200 OK">
+    ```bash title="cURL Request"
+    BODY='{"current_episode": 12, "status": "completed"}'
+    curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+<hr className="my-8" />
+
+<Card title="DELETE /v1/user_anime_list/:id">
+
+Deletes a user anime list entry.
+
+#### URL Parameters
+
+| Parameter | Type   | Description                                      |
+| --------- | ------ | ------------------------------------------------ |
+| `:id`     | string | The UUID of the user anime list entry.           |
+
+#### Responses & Examples
+
+<Tabs items={['200 OK']}>
+  <Tab value="200 OK">
+    ```bash title="cURL Request"
+    curl -i -X DELETE localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+    ```
+  </Tab>
+</Tabs>
+</Card>

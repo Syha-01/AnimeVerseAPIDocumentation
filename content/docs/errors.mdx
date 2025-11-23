@@ -1,0 +1,115 @@
+---
+title: Errors & Limits
+description: Understanding API errors, rate limits, and system behavior.
+---
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Errors & Limits
+
+This section details how the AnimeVerse API handles errors, enforces rate limits, and manages server shutdowns.
+
+## Rate Limiting
+
+To ensure fair usage and system stability, the API implements IP-based rate limiting.
+
+<Callout type="warn" title="Rate Limits">
+  - **Limit**: 2 requests per second
+  - **Burst**: 4 requests
+</Callout>
+
+If you exceed these limits, the API will return a `429 Too Many Requests` error.
+
+<Tabs items={['429 Response', 'Example Request']}>
+  <Tab value="429 Response">
+    ```json title="Response Body"
+    {
+      "error": "rate limit exceeded"
+    }
+    ```
+  </Tab>
+  <Tab value="Example Request">
+    To test this, you can send multiple requests in rapid succession.
+    ```bash title="cURL Request"
+    for i in {1..10}; do curl -i localhost:4000/v1/healthcheck; done
+    ```
+  </Tab>
+</Tabs>
+
+## Graceful Shutdown
+
+The server supports graceful shutdown. When a shutdown signal (`SIGINT` or `SIGTERM`) is received, it will:
+1. Stop accepting new connections.
+2. Wait up to **30 seconds** for active connections to complete.
+3. Terminate the process.
+
+This ensures that in-flight requests are not abruptly cut off during deployments or restarts.
+
+## Error Handling
+
+The API uses standard HTTP status codes to indicate the success or failure of a request. Errors are always returned in a JSON format with an `error` key.
+
+### Common Error Codes
+
+| Status Code | Description |
+| :--- | :--- |
+| `400 Bad Request` | The request could not be understood by the server due to malformed syntax. |
+| `404 Not Found` | The requested resource could not be found. |
+| `405 Method Not Allowed` | The method specified in the request is not allowed for the resource. |
+| `422 Unprocessable Entity` | The request was well-formed but was unable to be followed due to semantic errors (validation failures). |
+| `429 Too Many Requests` | The user has sent too many requests in a given amount of time. |
+| `500 Internal Server Error` | The server encountered an unexpected condition that prevented it from fulfilling the request. |
+
+### Error Examples
+
+<Tabs items={['400 Bad Request', '404 Not Found', '405 Method Not Allowed', '500 Internal Server Error']}>
+  <Tab value="400 Bad Request">
+    Occurs when sending invalid JSON or malformed data.
+
+    ```json title="Response Body"
+    {
+      "error": "body must not be empty"
+    }
+    ```
+    ```bash title="cURL Request"
+    # Sending an empty body to a POST endpoint
+    BODY='{}'
+    curl -i -X POST -d "$BODY" localhost:4000/v1/animes
+    ```
+  </Tab>
+  <Tab value="404 Not Found">
+    Occurs when requesting a resource that doesn't exist.
+
+    ```json title="Response Body"
+    {
+      "error": "the requested resource could not be found"
+    }
+    ```
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/unknown_endpoint
+    ```
+  </Tab>
+  <Tab value="405 Method Not Allowed">
+    Occurs when using an unsupported HTTP method.
+
+    ```json title="Response Body"
+    {
+      "error": "method is not supported for this resource"
+    }
+    ```
+    ```bash title="cURL Request"
+    # Sending a DELETE request to the collection endpoint
+    curl -i -X DELETE localhost:4000/v1/animes
+    ```
+  </Tab>
+  <Tab value="500 Internal Server Error">
+    Occurs when the server encounters an unexpected error (e.g., database connection failure).
+
+    ```json title="Response Body"
+    {
+      "error": "the server encountered a problem and could not process your request"
+    }
+    ```
+  </Tab>
+</Tabs>
