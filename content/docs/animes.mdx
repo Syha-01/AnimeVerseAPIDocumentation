@@ -4,14 +4,19 @@ description: Manage and retrieve anime information.
 ---
 import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 # Animes
 
-This resource provides access to the anime data in the AnimeVerse database.
+This resource provides comprehensive access to anime data in the AnimeVerse database, including searching, filtering, sorting, and full CRUD operations.
+
+<Callout type="info" title="Primary Key">
+  Anime records use the **MyAnimeList ID** as the primary key, which simplifies synchronization with external anime databases and APIs.
+</Callout>
 
 <Card title="GET /v1/animes">
 
-Retrieves a paginated and sortable list of all animes. The list can also be filtered by title and genres.
+Retrieves a paginated and sortable list of all animes. The list can be filtered by title and genres using powerful query parameters.
 
 #### Query Parameters
 
@@ -23,11 +28,31 @@ Retrieves a paginated and sortable list of all animes. The list can also be filt
 | `page_size`| integer                    | The number of records to return per page (between 1 and 100).                                                                            | `20`    |
 | `sort`     | string                     | Specifies the sort order. Prefix with a `-` for descending order. Allowed values: `id`, `-id`, `title`, `-title`, `score`, `-score`, `release_date`, `-release_date`. | `id`    |
 
+#### Anime Object Structure
+
+Each anime object contains the following fields:
+
+| Field                    | Type      | Description                                           |
+| ------------------------ | --------- | ----------------------------------------------------- |
+| `id`                     | integer   | MyAnimeList ID (primary key).                         |
+| `title`                  | string    | The main title of the anime.                          |
+| `synopsis`               | text      | Detailed plot summary.                                |
+| `cover_image_url`        | string    | URL for the cover art.                                |
+| `total_episodes`         | integer   | Total number of episodes.                             |
+| `status`                 | string    | Airing status (e.g., "Finished Airing").              |
+| `release_date`           | date      | Initial air date.                                     |
+| `rating`                 | string    | Age rating (e.g., "PG-13").                           |
+| `score`                  | decimal   | MyAnimeList score (0.00 to 10.00).                    |
+| `genres`                 | array     | List of genre strings.                                |
+| `studios`                | array     | List of animation studio names.                       |
+| `broadcast_information`  | string    | Broadcast details for airing shows.                   |
+| `jikan_last_synced_at`   | timestamp | Last sync timestamp with external API.                |
+
 #### Responses & Examples
 
 <Tabs items={['Success', 'Filtering', 'Pagination', 'Sorting', 'Validation Error']}>
   <Tab value="Success">
-    A successful response returns a `200 OK` status with a list of animes and metadata.
+    A successful response returns a `200 OK` status with a list of animes and metadata for pagination.
 
     ```json title="Response Body"
     {
@@ -39,49 +64,90 @@ Retrieves a paginated and sortable list of all animes. The list can also be filt
         "total_records": 3
       },
       "animes": [
-        // ... array of anime objects
+        {
+          "id": 5114,
+          "title": "Fullmetal Alchemist: Brotherhood",
+          "synopsis": "After a horrific alchemy experiment goes wrong...",
+          "cover_image_url": "https://cdn.myanimelist.net/images/anime/1223/96541.jpg",
+          "total_episodes": 64,
+          "status": "Finished Airing",
+          "release_date": "2009-04-05T00:00:00Z",
+          "rating": "R - 17+ (violence & profanity)",
+          "score": 9.14,
+          "genres": ["Action", "Military", "Adventure", "Comedy", "Drama", "Magic", "Fantasy"],
+          "studios": ["Bones"],
+          "broadcast_information": "Sundays at 17:00 (JST)",
+          "jikan_last_synced_at": "2023-10-27T10:00:00Z"
+        }
       ]
     }
     ```
     ```bash title="cURL Request"
-    # Get the first page with default settings (sort by id asc)
+    # Get the first page with default settings (sorted by id ascending)
     curl -i "localhost:4000/v1/animes"
     ```
   </Tab>
   <Tab value="Filtering">
-    You can combine filters to narrow down results.
+    Combine multiple filters to narrow down results. Filters are applied with AND logic.
 
-    ```bash title="cURL Request"
-    # Search for animes with 'alchemist' in the title AND the 'Magic' genre
+    <Callout type="info" title="Filter Behavior">
+      - **Title**: Case-insensitive partial match
+      - **Genres**: Must contain ALL specified genres (case-sensitive)
+    </Callout>
+
+    ```bash title="Search by Title"
+    # Search for animes with 'alchemist' in the title
+    curl -i "localhost:4000/v1/animes?title=alchemist"
+    ```
+
+    ```bash title="Filter by Genres"
+    # Get all animes that have BOTH 'Magic' AND 'Fantasy' genres
+    curl -i "localhost:4000/v1/animes?genres=Magic,Fantasy"
+    ```
+
+    ```bash title="Combined Filters"
+    # Search for animes with 'alchemist' in title AND 'Magic' genre
     curl -i "localhost:4000/v1/animes?title=alchemist&genres=Magic"
     ```
   </Tab>
   <Tab value="Pagination">
-    Control which records are returned using `page` and `page_size`.
+    Control which records are returned using `page` and `page_size` parameters.
 
-    ```bash title="cURL Request"
-    # Request the second page with a page size of 1
-    curl -i "localhost:4000/v1/animes?page=2&page_size=1"
+    ```bash title="First Page"
+    # Get the first page with 2 results per page
+    curl -i "localhost:4000/v1/animes?page=1&page_size=2"
     ```
+
+    ```bash title="Second Page"
+    # Request the second page with the same page size
+    curl -i "localhost:4000/v1/animes?page=2&page_size=2"
+    ```
+
+    **Pagination Limits**:
+    - `page`: 1 to 1000
+    - `page_size`: 1 to 100
   </Tab>
   <Tab value="Sorting">
-    Control the order of the results using the `sort` parameter.
+    Control the order of results using the `sort` parameter. Prefix with `-` for descending order.
 
-    <p><strong>Sort by title in ascending order (A-Z):</strong></p>
-    ```bash title="cURL Request"
+    ```bash title="Sort by Title (A-Z)"
     curl -i "localhost:4000/v1/animes?sort=title"
     ```
 
-    <p className="mt-4"><strong>Sort by score in descending order (highest score first):</strong></p>
-    ```bash title="cURL Request"
+    ```bash title="Sort by Score (Highest First)"
     curl -i "localhost:4000/v1/animes?sort=-score"
     ```
 
-    <p className="mt-4"><strong>Combine sorting and pagination:</strong></p>
-    ```bash title="cURL Request"
-    # Get the highest-scoring animes, 2 per page
-    curl -i "localhost:4000/v1/animes?sort=-score&page_size=2"
+    ```bash title="Sort by Release Date (Newest First)"
+    curl -i "localhost:4000/v1/animes?sort=-release_date"
     ```
+
+    ```bash title="Combined Sorting and Pagination"
+    # Get the top 5 highest-scoring animes
+    curl -i "localhost:4000/v1/animes?sort=-score&page_size=5"
+    ```
+
+    **Available Sort Fields**: `id`, `title`, `score`, `release_date` (and their `-` descending variants)
   </Tab>
   <Tab value="Validation Error">
     A `422 Unprocessable Entity` is returned if any query parameters are invalid.
@@ -105,32 +171,36 @@ Retrieves a paginated and sortable list of all animes. The list can also be filt
 
 <Card title="POST /v1/animes">
 
-Creates a new anime record in the database.
+Creates a new anime record in the database. All fields are required to ensure data completeness.
+
+<Callout type="warn" title="Required Fields">
+  All fields listed in the request body are **required**. Missing or invalid fields will result in validation errors.
+</Callout>
 
 #### Request Body
 
 The request body must be a JSON object with the following fields:
 
-| Field                  | Type      | Description                                     | Required |
-| ---------------------- | --------- | ----------------------------------------------- | -------- |
-| `id`                   | integer   | The MyAnimeList ID of the anime.                | Yes      |
-| `title`                | string    | The main title of the anime.                    | Yes      |
-| `synopsis`             | string    | A detailed plot summary.                        | Yes      |
-| `cover_image_url`      | string    | URL for the cover art.                          | Yes      |
-| `total_episodes`       | integer   | Total number of episodes (`>= 0`).              | Yes      |
-| `status`               | string    | Airing status (e.g., "Finished Airing").        | Yes      |
-| `release_date`         | string    | Initial air date in `YYYY-MM-DD` format.        | Yes      |
-| `rating`               | string    | Age rating (e.g., "PG-13").                     | Yes      |
-| `score`                | number    | MyAnimeList score (`0` to `10`).                | Yes      |
-| `genres`               | []string  | A list of genres.                               | Yes      |
-| `studios`              | []string  | A list of animation studios.                    | Yes      |
-| `broadcast_information`| string    | Broadcast details for airing shows.             | Yes      |
+| Field                  | Type      | Description                                     | Validation                          |
+| ---------------------- | --------- | ----------------------------------------------- | ----------------------------------- |
+| `id`                   | integer   | The MyAnimeList ID of the anime.                | Must be positive                    |
+| `title`                | string    | The main title of the anime.                    | Required, non-empty                 |
+| `synopsis`             | string    | A detailed plot summary.                        | Required                            |
+| `cover_image_url`      | string    | URL for the cover art.                          | Required, valid URL format          |
+| `total_episodes`       | integer   | Total number of episodes.                       | Must be >= 0                        |
+| `status`               | string    | Airing status.                                  | Required                            |
+| `release_date`         | string    | Initial air date in `YYYY-MM-DD` format.        | Required, valid date format         |
+| `rating`               | string    | Age rating (e.g., "PG-13").                     | Required                            |
+| `score`                | number    | MyAnimeList score.                              | Must be between 0 and 10            |
+| `genres`               | array     | A list of genre strings.                        | Required, non-empty array           |
+| `studios`              | array     | A list of animation studios.                    | Required, non-empty array           |
+| `broadcast_information`| string    | Broadcast details for airing shows.             | Required                            |
 
 #### Responses & Examples
 
-<Tabs items={['201 Created', '422 Validation Error']}>
+<Tabs items={['201 Created', '422 Validation Error', '400 Bad Request']}>
   <Tab value="201 Created">
-    A successful creation returns a `201 Created` status and the newly created anime object.
+    A successful creation returns a `201 Created` status and the newly created anime object. The `Location` header contains the URI of the new resource.
 
     ```json title="Response Body"
     {
@@ -146,7 +216,8 @@ The request body must be a JSON object with the following fields:
         "score": 8.62,
         "genres": ["Mystery", "Police", "Psychological", "Supernatural", "Thriller"],
         "studios": ["Madhouse"],
-        "broadcast_information": "Wednesdays at 00:56 (JST)"
+        "broadcast_information": "Wednesdays at 00:56 (JST)",
+        "jikan_last_synced_at": "2023-10-27T10:00:00Z"
       }
     }
     ```
@@ -170,13 +241,14 @@ The request body must be a JSON object with the following fields:
     ```
   </Tab>
   <Tab value="422 Validation Error">
-    If the request body is invalid, a `422 Unprocessable Entity` response is returned with details.
+    If the request body contains invalid data, a `422 Unprocessable Entity` response is returned with detailed validation errors.
 
     ```json title="Response Body"
     {
       "error": {
         "score": "must not be greater than 10",
-        "title": "must be provided"
+        "title": "must be provided",
+        "total_episodes": "must be greater than or equal to 0"
       }
     }
     ```
@@ -185,7 +257,26 @@ The request body must be a JSON object with the following fields:
     BODY='{
       "id": 999,
       "title": "",
-      "score": 11
+      "score": 11,
+      "total_episodes": -5
+    }'
+
+    curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes
+    ```
+  </Tab>
+  <Tab value="400 Bad Request">
+    If the request body contains malformed JSON or invalid date formats, a `400 Bad Request` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": "the body contains badly-formed JSON"
+    }
+    ```
+    ```bash title="cURL Request"
+    # Request with invalid date format
+    BODY='{
+      "id": 1,
+      "release_date": "not-a-date"
     }'
 
     curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes
@@ -198,19 +289,19 @@ The request body must be a JSON object with the following fields:
 
 <Card title="GET /v1/animes/:id">
 
-Retrieves the details of a specific anime by its ID.
+Retrieves the details of a specific anime by its MyAnimeList ID.
 
 #### URL Parameters
 
 | Parameter | Type    | Description                      |
 | --------- | ------- | -------------------------------- |
-| `:id`     | integer | The unique ID of the anime.      |
+| `:id`     | integer | The unique MyAnimeList ID.       |
 
 #### Responses & Examples
 
 <Tabs items={['200 OK', '404 Not Found']}>
   <Tab value="200 OK">
-    A successful response returns a `200 OK` status and the anime object.
+    A successful response returns a `200 OK` status and the complete anime object.
 
     ```json title="Response Body"
     {
@@ -226,7 +317,8 @@ Retrieves the details of a specific anime by its ID.
         "score": 9.14,
         "genres": ["Action", "Military", "Adventure", "Comedy", "Drama", "Magic", "Fantasy"],
         "studios": ["Bones"],
-        "broadcast_information": "Sundays at 17:00 (JST)"
+        "broadcast_information": "Sundays at 17:00 (JST)",
+        "jikan_last_synced_at": "2023-10-27T10:00:00Z"
       }
     }
     ```
@@ -253,7 +345,11 @@ Retrieves the details of a specific anime by its ID.
 
 <Card title="PATCH /v1/animes/:id">
 
-Performs a partial update on an anime's details. Only the fields provided in the request body will be updated.
+Performs a partial update on an anime's details. Only the fields provided in the request body will be updated, allowing for flexible modifications without requiring all fields.
+
+<Callout type="info" title="Partial Updates">
+  This endpoint supports **partial updates**. You only need to include the fields you want to modify. All other fields will remain unchanged.
+</Callout>
 
 #### URL Parameters
 
@@ -263,28 +359,37 @@ Performs a partial update on an anime's details. Only the fields provided in the
 
 #### Request Body
 
-The request body is a JSON object containing any of the fields from the `POST /v1/animes` endpoint. All fields are optional.
+The request body is a JSON object containing any of the fields from the `POST /v1/animes` endpoint. **All fields are optional** for updates.
 
 #### Responses & Examples
 
 <Tabs items={['200 OK', '404 Not Found', '422 Validation Error']}>
   <Tab value="200 OK">
-    A successful update returns a `200 OK` status and the fully updated anime object.
+    A successful update returns a `200 OK` status and the fully updated anime object with all fields.
 
     ```json title="Response Body"
     {
       "anime": {
         "id": 5114,
-        "title": "Fullmetal Alchemist: Brotherhood (Updated Score)",
+        "title": "Fullmetal Alchemist: Brotherhood",
         "score": 9.15,
         // ... other fields remain unchanged ...
       }
     }
     ```
-    ```bash title="cURL Request"
-    # Update the title and score of anime with ID 5114
+    ```bash title="Update Single Field"
+    # Update only the score
     BODY='{
-        "title": "Fullmetal Alchemist: Brotherhood (Updated Score)",
+        "score": 9.15
+    }'
+
+    curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes/5114
+    ```
+
+    ```bash title="Update Multiple Fields"
+    # Update both title and score
+    BODY='{
+        "title": "Fullmetal Alchemist: Brotherhood (Updated)",
         "score": 9.15
     }'
 
@@ -308,7 +413,7 @@ The request body is a JSON object containing any of the fields from the `POST /v
     ```
   </Tab>
   <Tab value="422 Validation Error">
-    If the update data is invalid, a `422 Unprocessable Entity` response is returned.
+    If the update data is invalid, a `422 Unprocessable Entity` response is returned with validation errors.
 
     ```json title="Response Body"
     {
@@ -318,6 +423,7 @@ The request body is a JSON object containing any of the fields from the `POST /v
     }
     ```
     ```bash title="cURL Request"
+    # Attempt to set an invalid score
     BODY='{
       "score": 12
     }'
@@ -333,6 +439,10 @@ The request body is a JSON object containing any of the fields from the `POST /v
 <Card title="DELETE /v1/animes/:id">
 
 Deletes a specific anime from the database by its ID.
+
+<Callout type="warn" title="Cascade Deletion">
+  Deleting an anime will also remove all associated **user anime list entries** and **reviews** due to foreign key constraints. This action cannot be undone.
+</Callout>
 
 #### URL Parameters
 
@@ -369,3 +479,65 @@ Deletes a specific anime from the database by its ID.
   </Tab>
 </Tabs>
 </Card>
+
+## Validation Rules
+
+The API enforces the following validation rules for anime data:
+
+### Title
+- **Required**: Must not be empty
+- **Type**: String
+
+### Total Episodes
+- **Required**: Must be provided
+- **Minimum**: 0 (for movies or unknown episode counts)
+- **Type**: Integer
+
+### Score
+- **Required**: Must be provided
+- **Minimum**: 0.00
+- **Maximum**: 10.00
+- **Type**: Decimal (4,2 precision)
+
+### Genres & Studios
+- **Required**: Must contain at least one item
+- **Type**: Array of strings
+- **Storage**: JSONB format for efficient querying
+
+### Release Date
+- **Required**: Must be provided
+- **Format**: `YYYY-MM-DD`
+- **Type**: Date
+
+## Database Schema
+
+Anime records are stored with the following schema:
+
+```sql
+CREATE TABLE anime (
+    id INTEGER PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    synopsis TEXT,
+    cover_image_url VARCHAR(255),
+    total_episodes INTEGER,
+    status VARCHAR(50),
+    release_date DATE,
+    rating VARCHAR(50),
+    score DECIMAL(4, 2),
+    genres JSONB,
+    studios JSONB,
+    broadcast_information VARCHAR(255),
+    jikan_last_synced_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_anime_title ON anime(title);
+CREATE INDEX idx_anime_genres ON anime USING GIN(genres);
+CREATE INDEX idx_anime_studios ON anime USING GIN(studios);
+```
+
+**Key Design Decisions**:
+- **Primary Key**: Uses MyAnimeList ID for easy external API synchronization
+- **JSONB Fields**: `genres` and `studios` stored as JSONB for flexible querying
+- **GIN Indexes**: Enable efficient searches within JSONB arrays
+- **Full-text Search**: Title index supports fast partial matching

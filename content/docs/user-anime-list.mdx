@@ -1,32 +1,57 @@
 ---
 title: User Anime List
-description: Manage user-specific anime lists.
+description: Manage user-specific anime lists and tracking.
 ---
 import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 # User Anime List
 
-Manage user-specific anime lists.
+Manage user-specific anime lists with comprehensive tracking features including watch status, episode progress, personal scores, and viewing dates.
+
+<Callout type="info" title="User List Tracking">
+  Each user can maintain a personalized list of animes with tracking for episodes watched, personal ratings, watch status, and viewing dates. The list prevents duplicate entries per anime per user.
+</Callout>
 
 <Card title="GET /v1/user_anime_list">
 
-Retrieves a paginated list of user anime entries. Can be filtered by user ID and status.
+Retrieves a paginated list of user anime entries. Results can be filtered by user ID and watching status, and support sorting by multiple fields.
 
 #### Query Parameters
 
 | Parameter  | Type    | Description                                                                                                                              | Default |
 | ---------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `user_id`  | string  | Filter by the User ID.                                                                                                                   | `""`    |
-| `status`   | string  | Filter by the watching status (e.g., "watching", "completed").                                                                           | `""`    |
-| `page`     | integer | The page number to retrieve.                                                                                                             | `1`     |
-| `page_size`| integer | The number of records to return per page.                                                                                                | `20`    |
+| `user_id`  | string  | Filter by the User ID (UUID format).                                                                                                     | `""`    |
+| `status`   | string  | Filter by watching status. Valid values: `Watching`, `Completed`, `Dropped`, `Watch later`.                                             | `""`    |
+| `page`     | integer | The page number to retrieve (between 1 and 1000).                                                                                        | `1`     |
+| `page_size`| integer | The number of records to return per page (between 1 and 100).                                                                            | `20`    |
 | `sort`     | string  | Specifies the sort order. Allowed values: `id`, `user_id`, `anime_id`, `status`, `score`, `created_at` (and their `-` descending variants). | `id`    |
+
+#### User Anime List Object Structure
+
+Each list entry contains the following fields:
+
+| Field                    | Type      | Description                                           |
+| ------------------------ | --------- | ----------------------------------------------------- |
+| `id`                     | UUID      | Unique identifier for the list entry.                 |
+| `user_id`                | UUID      | The ID of the user who owns this list entry.          |
+| `anime_id`               | integer   | The MyAnimeList ID of the anime.                      |
+| `status`                 | enum      | Watch status: `Watching`, `Completed`, `Dropped`, `Watch later`. |
+| `current_episode`        | integer   | Number of episodes watched (0 or greater).            |
+| `score`                  | integer   | Personal rating from 1 to 10 (optional).              |
+| `started_watching_date`  | date      | Date when user started watching (optional).           |
+| `finished_watching_date` | date      | Date when user finished watching (optional).          |
+| `created_at`             | timestamp | When the list entry was created.                      |
+| `updated_at`             | timestamp | Last update timestamp (auto-updated).                 |
+| `version`                | integer   | Version number for optimistic locking.                |
 
 #### Responses & Examples
 
-<Tabs items={['Success', 'Filtering']}>
+<Tabs items={['Success', 'Filter by User', 'Filter by Status', 'Sorting']}>
   <Tab value="Success">
+    A successful response returns a `200 OK` status with a list of user anime entries and pagination metadata.
+
     ```json title="Response Body"
     {
       "@metadata": {
@@ -39,27 +64,63 @@ Retrieves a paginated list of user anime entries. Can be filtered by user ID and
       "user_anime_lists": [
         {
           "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-          "user_id": "user123",
+          "user_id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
           "anime_id": 5114,
-          "status": "watching",
+          "status": "Watching",
           "current_episode": 10,
           "score": 9,
           "started_watching_date": "2023-01-01T00:00:00Z",
           "finished_watching_date": "0001-01-01T00:00:00Z",
           "created_at": "2023-01-01T10:00:00Z",
-          "version": 1
+          "updated_at": "2023-01-05T10:00:00Z",
+          "version": 2
         }
       ]
     }
     ```
     ```bash title="cURL Request"
+    # Get all user anime list entries
     curl -i "localhost:4000/v1/user_anime_list"
     ```
   </Tab>
-  <Tab value="Filtering">
-    ```bash title="cURL Request"
-    # Get 'watching' list for a specific user
-    curl -i "localhost:4000/v1/user_anime_list?user_id=user123&status=watching"
+  <Tab value="Filter by User">
+    Filter results to show only entries for a specific user.
+
+    ```bash title="Get All Entries for a User"
+    # Replace with actual user UUID
+    curl -i "localhost:4000/v1/user_anime_list?user_id=f86f401b-57ec-4712-adbb-aefe02a717cf"
+    ```
+
+    <Callout type="info" title="User IDs">
+      User IDs are UUIDs generated during user registration. You can obtain them from the user registration response.
+    </Callout>
+  </Tab>
+  <Tab value="Filter by Status">
+    Filter entries by watching status to see what users are currently watching, have completed, etc.
+
+    ```bash title="Get Completed Animes"
+    curl -i "localhost:4000/v1/user_anime_list?user_id=f86f401b-57ec-4712-adbb-aefe02a717cf&status=Completed"
+    ```
+
+    ```bash title="Get Currently Watching"
+    curl -i "localhost:4000/v1/user_anime_list?status=Watching"
+    ```
+
+    **Valid Status Values**: `Watching`, `Completed`, `Dropped`, `Watch later`
+  </Tab>
+  <Tab value="Sorting">
+    Sort results by various fields to organize user lists.
+
+    ```bash title="Sort by Score (Highest First)"
+    curl -i "localhost:4000/v1/user_anime_list?user_id=f86f401b-57ec-4712-adbb-aefe02a717cf&sort=-score"
+    ```
+
+    ```bash title="Sort by Recently Updated"
+    curl -i "localhost:4000/v1/user_anime_list?user_id=f86f401b-57ec-4712-adbb-aefe02a717cf&sort=-created_at"
+    ```
+
+    ```bash title="Combined: Completed, Highest Scored"
+    curl -i "localhost:4000/v1/user_anime_list?user_id=f86f401b-57ec-4712-adbb-aefe02a717cf&status=Completed&sort=-score"
     ```
   </Tab>
 </Tabs>
@@ -69,56 +130,103 @@ Retrieves a paginated list of user anime entries. Can be filtered by user ID and
 
 <Card title="POST /v1/user_anime_list">
 
-Creates a new entry in a user's anime list.
+Creates a new entry in a user's anime list. This allows users to start tracking an anime with their personal progress and ratings.
+
+<Callout type="warn" title="Unique Constraint">
+  Each user can only have **one entry per anime**. Attempting to create a duplicate entry will result in a database constraint error. Use the PATCH endpoint to update existing entries.
+</Callout>
 
 #### Request Body
 
-| Field                    | Type    | Description                                      | Required |
-| ------------------------ | ------- | ------------------------------------------------ | -------- |
-| `user_id`                | string  | The ID of the user.                              | Yes      |
-| `anime_id`               | integer | The ID of the anime.                             | Yes      |
-| `status`                 | string  | Watching status (e.g., "watching", "completed"). | Yes      |
-| `current_episode`        | integer | The last episode watched.                        | Yes      |
-| `score`                  | integer | User's score (0-10).                             | Yes      |
-| `started_watching_date`  | string  | Date started (`YYYY-MM-DD`).                     | No       |
-| `finished_watching_date` | string  | Date finished (`YYYY-MM-DD`).                    | No       |
+| Field                    | Type    | Description                                      | Required | Validation                    |
+| ------------------------ | ------- | ------------------------------------------------ | -------- | ----------------------------- |
+| `user_id`                | string  | The ID of the user (UUID).                       | Yes      | Must be valid UUID            |
+| `anime_id`               | integer | The ID of the anime (MyAnimeList ID).            | Yes      | Must be positive integer      |
+| `status`                 | string  | Watching status.                                 | Yes      | Must be valid enum value      |
+| `current_episode`        | integer | The last episode watched.                        | Yes      | Must be >= 0                  |
+| `score`                  | integer | User's rating (1-10).                            | No       | Must be between 1 and 10      |
+| `started_watching_date`  | string  | Date started watching (`YYYY-MM-DD`).            | No       | Valid date format             |
+| `finished_watching_date` | string  | Date finished watching (`YYYY-MM-DD`).           | No       | Valid date format             |
 
 #### Responses & Examples
 
-<Tabs items={['201 Created', '422 Validation Error']}>
+<Tabs items={['201 Created', '422 Validation Error', '409 Duplicate Entry']}>
   <Tab value="201 Created">
+    A successful creation returns a `201 Created` status and the newly created list entry. The `Location` header contains the URI of the new resource.
+
     ```json title="Response Body"
     {
       "user_anime_list": {
         "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-        "user_id": "user123",
+        "user_id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
         "anime_id": 5114,
-        "status": "watching",
+        "status": "Watching",
         "current_episode": 1,
         "score": 0,
-        // ...
+        "started_watching_date": "2023-10-27T00:00:00Z",
+        "finished_watching_date": "0001-01-01T00:00:00Z",
+        "created_at": "2023-10-27T10:00:00Z",
+        "updated_at": "2023-10-27T10:00:00Z",
+        "version": 1
       }
     }
     ```
     ```bash title="cURL Request"
+    # Start tracking an anime
     BODY='{
-      "user_id": "user123",
+      "user_id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
       "anime_id": 5114,
-      "status": "watching",
+      "status": "Watching",
       "current_episode": 1,
-      "score": 0,
+      "score": 8,
       "started_watching_date": "2023-10-27"
     }'
+
     curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list
     ```
   </Tab>
   <Tab value="422 Validation Error">
+    If the request body contains invalid data, a `422 Unprocessable Entity` response is returned with validation errors.
+
     ```json title="Response Body"
     {
       "error": {
-        "status": "must be provided"
+        "status": "must be provided",
+        "current_episode": "must be greater than or equal to 0",
+        "score": "must be between 1 and 10"
       }
     }
+    ```
+    ```bash title="cURL Request"
+    # Request with invalid data
+    BODY='{
+      "user_id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
+      "anime_id": 5114,
+      "status": "",
+      "current_episode": -1,
+      "score": 11
+    }'
+
+    curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list
+    ```
+  </Tab>
+  <Tab value="409 Duplicate Entry">
+    If the user already has this anime in their list, a database constraint error occurs.
+
+    <Callout type="warn" title="Unique Constraint">
+      The combination of `user_id` and `anime_id` must be unique. To modify an existing entry, use the PATCH endpoint instead.
+    </Callout>
+
+    ```bash title="cURL Request"
+    # Attempting to add the same anime twice
+    BODY='{
+      "user_id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
+      "anime_id": 5114,
+      "status": "Watching",
+      "current_episode": 1
+    }'
+
+    curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list
     ```
   </Tab>
 </Tabs>
@@ -134,19 +242,45 @@ Retrieves a specific user anime list entry by its UUID.
 
 | Parameter | Type   | Description                                      |
 | --------- | ------ | ------------------------------------------------ |
-| `:id`     | string | The UUID of the user anime list entry.           |
+| `:id`     | UUID   | The unique identifier of the list entry.         |
 
 #### Responses & Examples
 
 <Tabs items={['200 OK', '404 Not Found']}>
   <Tab value="200 OK">
+    A successful response returns a `200 OK` status and the complete list entry object.
+
+    ```json title="Response Body"
+    {
+      "user_anime_list": {
+        "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+        "user_id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
+        "anime_id": 5114,
+        "status": "Watching",
+        "current_episode": 10,
+        "score": 9,
+        "started_watching_date": "2023-01-01T00:00:00Z",
+        "finished_watching_date": "0001-01-01T00:00:00Z",
+        "created_at": "2023-01-01T10:00:00Z",
+        "updated_at": "2023-01-05T10:00:00Z",
+        "version": 2
+      }
+    }
+    ```
     ```bash title="cURL Request"
     curl -i localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
     ```
   </Tab>
   <Tab value="404 Not Found">
+    If a list entry with the specified UUID does not exist, a `404 Not Found` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": "the requested resource could not be found"
+    }
+    ```
     ```bash title="cURL Request"
-    curl -i localhost:4000/v1/user_anime_list/invalid-uuid
+    curl -i localhost:4000/v1/user_anime_list/00000000-0000-0000-0000-000000000000
     ```
   </Tab>
 </Tabs>
@@ -156,24 +290,106 @@ Retrieves a specific user anime list entry by its UUID.
 
 <Card title="PATCH /v1/user_anime_list/:id">
 
-Updates an existing user anime list entry.
+Updates an existing user anime list entry with partial data. Only the fields provided in the request body will be updated.
+
+<Callout type="info" title="Partial Updates">
+  This endpoint supports **partial updates**. You only need to include the fields you want to modify, making it ideal for incrementing episode counts or updating watch status.
+</Callout>
 
 #### URL Parameters
 
 | Parameter | Type   | Description                                      |
 | --------- | ------ | ------------------------------------------------ |
-| `:id`     | string | The UUID of the user anime list entry.           |
+| `:id`     | UUID   | The unique identifier of the list entry.         |
 
 #### Request Body
 
-Fields to update (all optional): `status`, `current_episode`, `score`, `started_watching_date`, `finished_watching_date`.
+Fields to update (all optional):
+
+| Field                    | Type    | Description                                      | Validation                    |
+| ------------------------ | ------- | ------------------------------------------------ | ----------------------------- |
+| `status`                 | string  | Updated watching status.                         | Must be valid enum value      |
+| `current_episode`        | integer | Updated episode count.                           | Must be >= 0                  |
+| `score`                  | integer | Updated personal rating.                         | Must be between 1 and 10      |
+| `started_watching_date`  | string  | Updated start date (`YYYY-MM-DD`).               | Valid date format             |
+| `finished_watching_date` | string  | Updated finish date (`YYYY-MM-DD`).              | Valid date format             |
 
 #### Responses & Examples
 
-<Tabs items={['200 OK']}>
+<Tabs items={['200 OK', '404 Not Found', '422 Validation Error']}>
   <Tab value="200 OK">
+    A successful update returns a `200 OK` status and the fully updated list entry.
+
+    ```json title="Response Body"
+    {
+      "user_anime_list": {
+        "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+        "user_id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
+        "anime_id": 5114,
+        "status": "Completed",
+        "current_episode": 64,
+        "score": 10,
+        "started_watching_date": "2023-01-01T00:00:00Z",
+        "finished_watching_date": "2023-02-15T00:00:00Z",
+        "created_at": "2023-01-01T10:00:00Z",
+        "updated_at": "2023-02-15T20:00:00Z",
+        "version": 3
+      }
+    }
+    ```
+    ```bash title="Increment Episode Count"
+    # Update just the current episode
+    BODY='{
+      "current_episode": 12
+    }'
+
+    curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+    ```
+
+    ```bash title="Mark as Completed"
+    # Update status and finish date
+    BODY='{
+      "status": "Completed",
+      "current_episode": 64,
+      "score": 10,
+      "finished_watching_date": "2023-02-15"
+    }'
+
+    curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+    ```
+  </Tab>
+  <Tab value="404 Not Found">
+    If a list entry with the specified UUID does not exist, a `404 Not Found` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": "the requested resource could not be found"
+    }
+    ```
     ```bash title="cURL Request"
-    BODY='{"current_episode": 12, "status": "completed"}'
+    BODY='{"status": "Completed"}'
+
+    curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list/00000000-0000-0000-0000-000000000000
+    ```
+  </Tab>
+  <Tab value="422 Validation Error">
+    If the update data is invalid, a `422 Unprocessable Entity` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": {
+        "status": "must be one of: Watching, Completed, Dropped, Watch later",
+        "score": "must be between 1 and 10"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    # Invalid status and score
+    BODY='{
+      "status": "InvalidStatus",
+      "score": 15
+    }'
+
     curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
     ```
   </Tab>
@@ -184,21 +400,149 @@ Fields to update (all optional): `status`, `current_episode`, `score`, `started_
 
 <Card title="DELETE /v1/user_anime_list/:id">
 
-Deletes a user anime list entry.
+Deletes a user anime list entry, removing it from the user's tracking list.
+
+<Callout type="info" title="Safe Deletion">
+  Deleting a list entry only removes the tracking record. It does **not** affect the anime data itself or other users' lists.
+</Callout>
 
 #### URL Parameters
 
 | Parameter | Type   | Description                                      |
 | --------- | ------ | ------------------------------------------------ |
-| `:id`     | string | The UUID of the user anime list entry.           |
+| `:id`     | UUID   | The unique identifier of the list entry.         |
 
 #### Responses & Examples
 
-<Tabs items={['200 OK']}>
+<Tabs items={['200 OK', '404 Not Found']}>
   <Tab value="200 OK">
+    A successful deletion returns a `200 OK` status and a confirmation message.
+
+    ```json title="Response Body"
+    {
+      "message": "user anime list successfully deleted"
+    }
+    ```
     ```bash title="cURL Request"
     curl -i -X DELETE localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
     ```
   </Tab>
+  <Tab value="404 Not Found">
+    If a list entry with the specified UUID does not exist, a `404 Not Found` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": "the requested resource could not be found"
+    }
+    ```
+    ```bash title="cURL Request"
+    curl -i -X DELETE localhost:4000/v1/user_anime_list/00000000-0000-0000-0000-000000000000
+    ```
+  </Tab>
 </Tabs>
 </Card>
+
+## Validation Rules
+
+The API enforces the following validation rules for user anime list data:
+
+### Status
+- **Required**: Must be provided
+- **Valid Values**: `Watching`, `Completed`, `Dropped`, `Watch later`
+- **Type**: Enum (enforced at database level)
+- **Case-Sensitive**: Must match exactly
+
+### Current Episode
+- **Required**: Must be provided
+- **Minimum**: 0 (for animes not yet started)
+- **Type**: Integer
+- **Constraint**: Cannot be negative
+
+### Score
+- **Optional**: Can be omitted if user hasn't rated yet
+- **Range**: 1 to 10 (inclusive)
+- **Type**: Integer
+- **Note**: 0 is not a valid score; use null/omit the field instead
+
+### Dates
+- **Optional**: Started and finished dates are optional
+- **Format**: `YYYY-MM-DD`
+- **Type**: Date
+- **Validation**: Must be parseable as valid dates
+
+### User and Anime IDs
+- **user_id**: Must be a valid UUID from the users table
+- **anime_id**: Must be a valid integer from the anime table
+- **Unique Constraint**: The combination must be unique (one entry per anime per user)
+
+## User List Workflow
+
+Here's a typical workflow for managing a user's anime list:
+
+1. **Adding an Anime**
+   - User discovers an anime they want to track
+   - POST request creates new list entry with initial status (usually "Watch later" or "Watching")
+   - Entry created with episode 0 or 1
+
+2. **Tracking Progress**
+   - As user watches episodes, PATCH requests update `current_episode`
+   - User can update their personal `score` rating
+   - `updated_at` timestamp is automatically updated
+
+3. **Completing an Anime**
+   - PATCH request updates `status` to "Completed"
+   - Set `finished_watching_date` to current date
+   - Set `current_episode` to total episodes
+   - Optionally update final `score`
+
+4. **Managing the List**
+   - GET requests with filters retrieve specific categories (e.g., all "Watching" animes)
+   - Sorting helps organize by score, update time, etc.
+   - DELETE removes entries user no longer wants to track
+
+## Database Schema
+
+User anime list entries are stored with the following schema:
+
+```sql
+CREATE TYPE user_anime_status AS ENUM (
+    'Watching',
+    'Completed',
+    'Dropped',
+    'Watch later'
+);
+
+CREATE TABLE user_anime_list (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    anime_id INTEGER NOT NULL REFERENCES anime(id) ON DELETE CASCADE,
+    status user_anime_status NOT NULL,
+    current_episode INTEGER NOT NULL DEFAULT 0 CHECK (current_episode >= 0),
+    score INTEGER CHECK (score >= 1 AND score <= 10),
+    started_watching_date DATE,
+    finished_watching_date DATE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    version INTEGER NOT NULL DEFAULT 1,
+    UNIQUE (user_id, anime_id)
+);
+
+-- Indexes for performance
+CREATE INDEX idx_user_anime_list_user_id ON user_anime_list(user_id);
+CREATE INDEX idx_user_anime_list_anime_id ON user_anime_list(anime_id);
+
+-- Trigger for auto-updating updated_at
+CREATE TRIGGER set_timestamp
+BEFORE UPDATE ON user_anime_list
+FOR EACH ROW
+EXECUTE FUNCTION trigger_set_timestamp();
+```
+
+**Key Design Decisions**:
+- **UUID Primary Keys**: Better for distributed systems and prevent sequential ID guessing
+- **Custom Enum Type**: Enforces status values at database level for data integrity
+- **Foreign Key Cascades**: Automatically cleans up list entries when users or animes are deleted
+- **Unique Constraint**: Prevents duplicate entries for same anime per user
+- **Check Constraints**: Ensures episode counts are non-negative and scores are in valid range
+- **Optimistic Locking**: Version field prevents concurrent update conflicts
+- **Auto-Timestamps**: `updated_at` automatically updates on any modification

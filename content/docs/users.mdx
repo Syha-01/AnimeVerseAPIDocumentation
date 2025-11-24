@@ -1,0 +1,286 @@
+---
+title: Users & Authentication
+description: User registration, activation, and authentication endpoints.
+---
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Users & Authentication
+
+This resource provides endpoints for user registration and account activation.
+
+<Callout type="info" title="Email Verification Required">
+  All newly registered users must verify their email address before their account is activated. An activation token is automatically sent via email upon registration.
+</Callout>
+
+<Card title="POST /v1/users">
+
+Register a new user account. Upon successful registration, a welcome email with an activation token is sent to the provided email address.
+
+#### Request Body
+
+The request body must be a JSON object with the following fields:
+
+| Field      | Type   | Description                                             | Required |
+| ---------- | ------ | ------------------------------------------------------- | -------- |
+| `username` | string | The user's display name (max 200 characters).           | Yes      |
+| `email`    | string | Valid email address (must be unique).                   | Yes      |
+| `password` | string | Password (8-72 characters, bcrypt hashed on server).    | Yes      |
+
+#### Password Requirements
+
+<Callout type="warn" title="Password Security">
+  - Minimum length: **8 characters**
+  - Maximum length: **72 characters** (bcrypt limitation)
+  - Passwords are hashed using bcrypt (cost factor 12) before storage
+  - Plain-text passwords are never stored in the database
+</Callout>
+
+#### User Model Structure
+
+Upon creation, the user object includes:
+
+| Field        | Type      | Description                                  |
+| ------------ | --------- | -------------------------------------------- |
+| `id`         | UUID      | Unique user identifier (auto-generated).     |
+| `created_at` | timestamp | Account creation timestamp.                  |
+| `username`   | string    | User's display name.                         |
+| `email`      | string    | User's email address.                        |
+| `activated`  | boolean   | Account activation status (initially false). |
+
+#### Responses & Examples
+
+<Tabs items={['201 Created', '422 Validation Error', '409 Duplicate Email']}>
+  <Tab value="201 Created">
+    A successful registration returns a `201 Created` status and the user object. An activation email is sent in the background.
+
+    ```json title="Response Body"
+    {
+      "user": {
+        "id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
+        "created_at": "2023-10-27T10:00:00Z",
+        "username": "Test User",
+        "email": "test@example.com",
+        "activated": false
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    BODY='{
+      "username": "Test User",
+      "email": "test@example.com",
+      "password": "password123"
+    }'
+
+    curl -i -X POST -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users
+    ```
+
+    **Note**: Check the email inbox for the activation token. The token expires in **3 days**.
+  </Tab>
+  <Tab value="422 Validation Error">
+    If the request body contains invalid data, a `422 Unprocessable Entity` response is returned with validation errors.
+
+    ```json title="Response Body"
+    {
+      "error": {
+        "email": "must be a valid email address",
+        "password": "must be at least 8 bytes long",
+        "username": "must be provided"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    # Request with invalid data
+    BODY='{
+      "username": "",
+      "email": "invalid-email",
+      "password": "short"
+    }'
+
+    curl -i -X POST -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users
+    ```
+  </Tab>
+  <Tab value="409 Duplicate Email">
+    If a user with the provided email already exists, a `422 Unprocessable Entity` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": {
+        "email": "a user with this email address already exists"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    # Try to register the same email twice
+    BODY='{
+      "username": "Another User",
+      "email": "test@example.com",
+      "password": "password123"
+    }'
+
+    curl -i -X POST -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+<hr className="my-8" />
+
+<Card title="PUT /v1/users/activated">
+
+Activate a user account using the activation token sent via email during registration.
+
+#### Activation Token
+
+- **Format**: 26-character base32-encoded string
+- **Expiry**: 3 days from registration
+- **Scope**: `activation`
+- **Security**: SHA-256 hashed before database storage
+
+#### Request Body
+
+| Field   | Type   | Description                                        | Required |
+| ------- | ------ | -------------------------------------------------- | -------- |
+| `token` | string | The 26-character activation token from the email.  | Yes      |
+
+#### Responses & Examples
+
+<Tabs items={['200 OK', '422 Validation Error', '401 Invalid Token']}>
+  <Tab value="200 OK">
+    A successful activation returns a `200 OK` status and the updated user object with `activated: true`.
+
+    ```json title="Response Body"
+    {
+      "user": {
+        "id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
+        "created_at": "2023-10-27T10:00:00Z",
+        "username": "Test User",
+        "email": "test@example.com",
+        "activated": true
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    # Replace "..." with the actual token from the email
+    BODY='{
+      "token": "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    }'
+
+    curl -i -X PUT -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users/activated
+    ```
+  </Tab>
+  <Tab value="422 Validation Error">
+    If the token format is invalid, a `422 Unprocessable Entity` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": {
+        "token": "must be 26 characters long"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    # Token that's too short
+    BODY='{
+      "token": "SHORT"
+    }'
+
+    curl -i -X PUT -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users/activated
+    ```
+  </Tab>
+  <Tab value="401 Invalid Token">
+    If the token doesn't exist, has expired, or is invalid, a `422 Unprocessable Entity` response is returned.
+
+    ```json title="Response Body"
+    {
+      "error": {
+        "token": "invalid or expired activation token"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    # Token that doesn't exist or has expired
+    BODY='{
+      "token": "INVALIDTOKENABCDEFGHIJKLM"
+    }'
+
+    curl -i -X PUT -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users/activated
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+## Email Verification Flow
+
+The user registration and activation process follows this workflow:
+
+1. **User Registration**
+   - User submits registration form with username, email, and password
+   - API validates input data
+   - Password is hashed using bcrypt (cost factor 12)
+   - User record is created with `activated: false`
+   - Activation token is generated (3-day expiry)
+
+2. **Email Delivery**
+   - Welcome email is sent asynchronously to user's email address
+   - Email contains the 26-character activation token
+   - Token is stored as SHA-256 hash in database for security
+
+3. **Account Activation**
+   - User clicks activation link or copies token from email
+   - Token is submitted to `PUT /v1/users/activated`
+   - API verifies token validity and expiry
+   - User's `activated` field is set to `true`
+   - All activation tokens for that user are deleted
+
+<Callout type="info" title="Background Email Processing">
+  Emails are sent asynchronously in the background to prevent blocking the registration response. If email delivery fails, the error is logged but doesn't affect the registration success.
+</Callout>
+
+## Validation Rules
+
+### Username
+- **Required**: Must not be empty
+- **Maximum Length**: 200 characters
+
+### Email
+- **Required**: Must not be empty
+- **Format**: Must match standard email format (validated via regex)
+- **Uniqueness**: Must be unique across all users
+
+### Password
+- **Required**: Must not be empty
+- **Minimum Length**: 8 characters
+- **Maximum Length**: 72 characters (bcrypt limitation)
+- **Storage**: Never stored in plain text; always bcrypt hashed
+
+## Database Schema
+
+The users are stored with the following schema:
+
+```sql
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    avatar_url VARCHAR(255),
+    bio TEXT,
+    activated BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    version INTEGER NOT NULL DEFAULT 1
+);
+```
+
+Activation tokens are stored separately:
+
+```sql
+CREATE TABLE tokens (
+    hash BYTEA PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expiry TIMESTAMPTZ NOT NULL,
+    scope TEXT NOT NULL
+);
+```

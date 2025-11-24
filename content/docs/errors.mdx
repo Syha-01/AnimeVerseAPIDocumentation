@@ -10,6 +10,50 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 This section details how the AnimeVerse API handles errors, enforces rate limits, and manages server shutdowns.
 
+## Healthcheck Endpoint
+
+The API provides a healthcheck endpoint for monitoring server availability and retrieving system information.
+
+<Card title="GET /v1/healthcheck">
+
+Returns the current status of the API server along with environment and version information.
+
+#### Response Example
+
+<Tabs items={['200 OK']}>
+  <Tab value="200 OK">
+    ```json title="Response Body"
+    {
+      "status": "available",
+      "system_info": {
+        "environment": "development",
+        "version": "1.0.0"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/healthcheck
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+## CORS Configuration
+
+The API supports Cross-Origin Resource Sharing (CORS) for trusted origins. This allows web applications from specified domains to make requests to the API.
+
+<Callout type="info" title="Trusted Origins">
+  By default, CORS is configured via the `--cors-trusted-origins` command-line flag. Origins must be explicitly whitelisted to access the API from a browser.
+</Callout>
+
+**Allowed Methods**: `OPTIONS`, `PUT`, `PATCH`, `DELETE`  
+**Allowed Headers**: `Authorization`, `Content-Type`
+
+**Example**: Start the server with trusted origins:
+```bash
+go run ./cmd/api --cors-trusted-origins="http://localhost:3000 https://example.com"
+```
+
 ## Rate Limiting
 
 To ensure fair usage and system stability, the API implements IP-based rate limiting.

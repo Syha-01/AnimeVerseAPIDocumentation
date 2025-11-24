@@ -1,6 +1,7 @@
 {
   "index": "Introduction",
-  "errors": "Errors & Limits",
+  "users": "Users & Authentication",
   "animes": "Animes",
-  "user-anime-list": "User Anime List"
+  "user-anime-list": "User Anime List",
+  "errors": "Errors & Limits"
 }
