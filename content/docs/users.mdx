@@ -55,6 +55,15 @@ Upon creation, the user object includes:
   <Tab value="201 Created">
     A successful registration returns a `201 Created` status and the user object. An activation email is sent in the background.
 
+    ```bash title="cURL Request"
+    BODY='{
+      "username": "Test User",
+      "email": "test@example.com",
+      "password": "password123"
+    }'
+
+    curl -i -X POST -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users
+    ```
     ```json title="Response Body"
     {
       "user": {
@@ -66,30 +75,12 @@ Upon creation, the user object includes:
       }
     }
     ```
-    ```bash title="cURL Request"
-    BODY='{
-      "username": "Test User",
-      "email": "test@example.com",
-      "password": "password123"
-    }'
-
-    curl -i -X POST -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users
-    ```
 
     **Note**: Check the email inbox for the activation token. The token expires in **3 days**.
   </Tab>
   <Tab value="422 Validation Error">
     If the request body contains invalid data, a `422 Unprocessable Entity` response is returned with validation errors.
 
-    ```json title="Response Body"
-    {
-      "error": {
-        "email": "must be a valid email address",
-        "password": "must be at least 8 bytes long",
-        "username": "must be provided"
-      }
-    }
-    ```
     ```bash title="cURL Request"
     # Request with invalid data
     BODY='{
@@ -100,17 +91,19 @@ Upon creation, the user object includes:
 
     curl -i -X POST -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users
     ```
+    ```json title="Response Body"
+    {
+      "error": {
+        "email": "must be a valid email address",
+        "password": "must be at least 8 bytes long",
+        "username": "must be provided"
+      }
+    }
+    ```
   </Tab>
   <Tab value="409 Duplicate Email">
     If a user with the provided email already exists, a `422 Unprocessable Entity` response is returned.
 
-    ```json title="Response Body"
-    {
-      "error": {
-        "email": "a user with this email address already exists"
-      }
-    }
-    ```
     ```bash title="cURL Request"
     # Try to register the same email twice
     BODY='{
@@ -120,6 +113,13 @@ Upon creation, the user object includes:
     }'
 
     curl -i -X POST -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users
+    ```
+    ```json title="Response Body"
+    {
+      "error": {
+        "email": "a user with this email address already exists"
+      }
+    }
     ```
   </Tab>
 </Tabs>
@@ -150,6 +150,14 @@ Activate a user account using the activation token sent via email during registr
   <Tab value="200 OK">
     A successful activation returns a `200 OK` status and the updated user object with `activated: true`.
 
+    ```bash title="cURL Request"
+    # Replace "..." with the actual token from the email
+    BODY='{
+      "token": "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    }'
+
+    curl -i -X PUT -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users/activated
+    ```
     ```json title="Response Body"
     {
       "user": {
@@ -161,25 +169,10 @@ Activate a user account using the activation token sent via email during registr
       }
     }
     ```
-    ```bash title="cURL Request"
-    # Replace "..." with the actual token from the email
-    BODY='{
-      "token": "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    }'
-
-    curl -i -X PUT -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users/activated
-    ```
   </Tab>
   <Tab value="422 Validation Error">
     If the token format is invalid, a `422 Unprocessable Entity` response is returned.
 
-    ```json title="Response Body"
-    {
-      "error": {
-        "token": "must be 26 characters long"
-      }
-    }
-    ```
     ```bash title="cURL Request"
     # Token that's too short
     BODY='{
@@ -188,17 +181,17 @@ Activate a user account using the activation token sent via email during registr
 
     curl -i -X PUT -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users/activated
     ```
+    ```json title="Response Body"
+    {
+      "error": {
+        "token": "must be 26 characters long"
+      }
+    }
+    ```
   </Tab>
   <Tab value="401 Invalid Token">
     If the token doesn't exist, has expired, or is invalid, a `422 Unprocessable Entity` response is returned.
 
-    ```json title="Response Body"
-    {
-      "error": {
-        "token": "invalid or expired activation token"
-      }
-    }
-    ```
     ```bash title="cURL Request"
     # Token that doesn't exist or has expired
     BODY='{
@@ -206,6 +199,13 @@ Activate a user account using the activation token sent via email during registr
     }'
 
     curl -i -X PUT -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users/activated
+    ```
+    ```json title="Response Body"
+    {
+      "error": {
+        "token": "invalid or expired activation token"
+      }
+    }
     ```
   </Tab>
 </Tabs>
@@ -308,14 +308,6 @@ Authenticate a user and retrieve a Bearer token.
   <Tab value="201 Created">
     Returns a Bearer token valid for 24 hours.
 
-    ```json title="Response Body"
-    {
-      "authentication_token": {
-        "token": "35GDX654ZCHMPJQR5PNDV3UJIE",
-        "expiry": "2025-11-26T17:52:04.283329562-06:00"
-      }
-    }
-    ```
     ```bash title="cURL Request"
     BODY='{
       "email": "test@example.com",
@@ -323,6 +315,14 @@ Authenticate a user and retrieve a Bearer token.
     }'
 
     curl -i -X POST -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/tokens/authentication
+    ```
+    ```json title="Response Body"
+    {
+      "authentication_token": {
+        "token": "35GDX654ZCHMPJQR5PNDV3UJIE",
+        "expiry": "2025-11-26T17:52:04.283329562-06:00"
+      }
+    }
     ```
   </Tab>
   <Tab value="401 Unauthorized">

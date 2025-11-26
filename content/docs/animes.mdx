@@ -54,6 +54,10 @@ Each anime object contains the following fields:
   <Tab value="Success">
     A successful response returns a `200 OK` status with a list of animes and metadata for pagination.
 
+    ```bash title="cURL Request"
+    # Get the first page with default settings (sorted by id ascending)
+    curl -i "localhost:4000/v1/animes"
+    ```
     ```json title="Response Body"
     {
       "@metadata": {
@@ -81,10 +85,6 @@ Each anime object contains the following fields:
         }
       ]
     }
-    ```
-    ```bash title="cURL Request"
-    # Get the first page with default settings (sorted by id ascending)
-    curl -i "localhost:4000/v1/animes"
     ```
   </Tab>
   <Tab value="Filtering">
@@ -152,16 +152,16 @@ Each anime object contains the following fields:
   <Tab value="Validation Error">
     A `422 Unprocessable Entity` is returned if any query parameters are invalid.
 
+    ```bash title="cURL Request"
+    # Request with an invalid sort parameter
+    curl -i "localhost:4000/v1/animes?sort=invalid_field"
+    ```
     ```json title="Response Body"
     {
       "error": {
         "sort": "invalid sort value"
       }
     }
-    ```
-    ```bash title="cURL Request"
-    # Request with an invalid sort parameter
-    curl -i "localhost:4000/v1/animes?sort=invalid_field"
     ```
   </Tab>
 </Tabs>
@@ -202,6 +202,24 @@ The request body must be a JSON object with the following fields:
   <Tab value="201 Created">
     A successful creation returns a `201 Created` status and the newly created anime object. The `Location` header contains the URI of the new resource.
 
+    ```bash title="cURL Request"
+    BODY='{
+        "id": 1535,
+        "title": "Death Note",
+        "synopsis": "A shinigami, as a god of death, can kill any person...",
+        "cover_image_url": "https://cdn.myanimelist.net/images/anime/9/9453.jpg",
+        "total_episodes": 37,
+        "status": "Finished Airing",
+        "release_date": "2006-10-04",
+        "rating": "R - 17+ (violence & profanity)",
+        "score": 8.62,
+        "genres": ["Mystery", "Police", "Psychological", "Supernatural", "Thriller"],
+        "studios": ["Madhouse"],
+        "broadcast_information": "Wednesdays at 00:56 (JST)"
+    }'
+
+    curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes
+    ```
     ```json title="Response Body"
     {
       "anime": {
@@ -221,37 +239,10 @@ The request body must be a JSON object with the following fields:
       }
     }
     ```
-    ```bash title="cURL Request"
-    BODY='{
-        "id": 1535,
-        "title": "Death Note",
-        "synopsis": "A shinigami, as a god of death, can kill any person...",
-        "cover_image_url": "https://cdn.myanimelist.net/images/anime/9/9453.jpg",
-        "total_episodes": 37,
-        "status": "Finished Airing",
-        "release_date": "2006-10-04",
-        "rating": "R - 17+ (violence & profanity)",
-        "score": 8.62,
-        "genres": ["Mystery", "Police", "Psychological", "Supernatural", "Thriller"],
-        "studios": ["Madhouse"],
-        "broadcast_information": "Wednesdays at 00:56 (JST)"
-    }'
-
-    curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes
-    ```
   </Tab>
   <Tab value="422 Validation Error">
     If the request body contains invalid data, a `422 Unprocessable Entity` response is returned with detailed validation errors.
 
-    ```json title="Response Body"
-    {
-      "error": {
-        "score": "must not be greater than 10",
-        "title": "must be provided",
-        "total_episodes": "must be greater than or equal to 0"
-      }
-    }
-    ```
     ```bash title="cURL Request"
     # Request with missing title and invalid score
     BODY='{
@@ -263,15 +254,19 @@ The request body must be a JSON object with the following fields:
 
     curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes
     ```
+    ```json title="Response Body"
+    {
+      "error": {
+        "score": "must not be greater than 10",
+        "title": "must be provided",
+        "total_episodes": "must be greater than or equal to 0"
+      }
+    }
+    ```
   </Tab>
   <Tab value="400 Bad Request">
     If the request body contains malformed JSON or invalid date formats, a `400 Bad Request` response is returned.
 
-    ```json title="Response Body"
-    {
-      "error": "the body contains badly-formed JSON"
-    }
-    ```
     ```bash title="cURL Request"
     # Request with invalid date format
     BODY='{
@@ -280,6 +275,11 @@ The request body must be a JSON object with the following fields:
     }'
 
     curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes
+    ```
+    ```json title="Response Body"
+    {
+      "error": "the body contains badly-formed JSON"
+    }
     ```
   </Tab>
 </Tabs>
@@ -303,6 +303,9 @@ Retrieves the details of a specific anime by its MyAnimeList ID.
   <Tab value="200 OK">
     A successful response returns a `200 OK` status and the complete anime object.
 
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/animes/5114
+    ```
     ```json title="Response Body"
     {
       "anime": {
@@ -322,20 +325,17 @@ Retrieves the details of a specific anime by its MyAnimeList ID.
       }
     }
     ```
-    ```bash title="cURL Request"
-    curl -i localhost:4000/v1/animes/5114
-    ```
   </Tab>
   <Tab value="404 Not Found">
     If an anime with the specified ID does not exist, a `404 Not Found` response is returned.
 
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/animes/999999
+    ```
     ```json title="Response Body"
     {
       "error": "the requested resource could not be found"
     }
-    ```
-    ```bash title="cURL Request"
-    curl -i localhost:4000/v1/animes/999999
     ```
   </Tab>
 </Tabs>
@@ -367,16 +367,6 @@ The request body is a JSON object containing any of the fields from the `POST /v
   <Tab value="200 OK">
     A successful update returns a `200 OK` status and the fully updated anime object with all fields.
 
-    ```json title="Response Body"
-    {
-      "anime": {
-        "id": 5114,
-        "title": "Fullmetal Alchemist: Brotherhood",
-        "score": 9.15,
-        // ... other fields remain unchanged ...
-      }
-    }
-    ```
     ```bash title="Update Single Field"
     # Update only the score
     BODY='{
@@ -395,15 +385,20 @@ The request body is a JSON object containing any of the fields from the `POST /v
 
     curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes/5114
     ```
+    ```json title="Response Body"
+    {
+      "anime": {
+        "id": 5114,
+        "title": "Fullmetal Alchemist: Brotherhood",
+        "score": 9.15,
+        // ... other fields remain unchanged ...
+      }
+    }
+    ```
   </Tab>
   <Tab value="404 Not Found">
     If an anime with the specified ID does not exist, a `404 Not Found` response is returned.
 
-    ```json title="Response Body"
-    {
-      "error": "the requested resource could not be found"
-    }
-    ```
     ```bash title="cURL Request"
     BODY='{
       "score": 9.0
@@ -411,17 +406,15 @@ The request body is a JSON object containing any of the fields from the `POST /v
 
     curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes/999999
     ```
+    ```json title="Response Body"
+    {
+      "error": "the requested resource could not be found"
+    }
+    ```
   </Tab>
   <Tab value="422 Validation Error">
     If the update data is invalid, a `422 Unprocessable Entity` response is returned with validation errors.
 
-    ```json title="Response Body"
-    {
-      "error": {
-        "score": "must not be greater than 10"
-      }
-    }
-    ```
     ```bash title="cURL Request"
     # Attempt to set an invalid score
     BODY='{
@@ -429,6 +422,13 @@ The request body is a JSON object containing any of the fields from the `POST /v
     }'
 
     curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/animes/5114
+    ```
+    ```json title="Response Body"
+    {
+      "error": {
+        "score": "must not be greater than 10"
+      }
+    }
     ```
   </Tab>
 </Tabs>
@@ -456,25 +456,25 @@ Deletes a specific anime from the database by its ID.
   <Tab value="200 OK">
     A successful deletion returns a `200 OK` status and a confirmation message.
 
+    ```bash title="cURL Request"
+    curl -i -X DELETE localhost:4000/v1/animes/1535
+    ```
     ```json title="Response Body"
     {
       "message": "anime successfully deleted"
     }
     ```
-    ```bash title="cURL Request"
-    curl -i -X DELETE localhost:4000/v1/animes/1535
-    ```
   </Tab>
   <Tab value="404 Not Found">
     If an anime with the specified ID does not exist, a `404 Not Found` response is returned.
 
+    ```bash title="cURL Request"
+    curl -i -X DELETE localhost:4000/v1/animes/999999
+    ```
     ```json title="Response Body"
     {
       "error": "the requested resource could not be found"
     }
-    ```
-    ```bash title="cURL Request"
-    curl -i -X DELETE localhost:4000/v1/animes/999999
     ```
   </Tab>
 </Tabs>

@@ -52,6 +52,10 @@ Each list entry contains the following fields:
   <Tab value="Success">
     A successful response returns a `200 OK` status with a list of user anime entries and pagination metadata.
 
+    ```bash title="cURL Request"
+    # Get all user anime list entries
+    curl -i "localhost:4000/v1/user_anime_list"
+    ```
     ```json title="Response Body"
     {
       "@metadata": {
@@ -77,10 +81,6 @@ Each list entry contains the following fields:
         }
       ]
     }
-    ```
-    ```bash title="cURL Request"
-    # Get all user anime list entries
-    curl -i "localhost:4000/v1/user_anime_list"
     ```
   </Tab>
   <Tab value="Filter by User">
@@ -150,10 +150,23 @@ Creates a new entry in a user's anime list. This allows users to start tracking 
 
 #### Responses & Examples
 
-<Tabs items={['201 Created', '422 Validation Error', '409 Duplicate Entry']}>
+<Tabs items={['201 Created', 'Smart Caching (New Anime)', '422 Validation Error', '409 Duplicate Entry']}>
   <Tab value="201 Created">
     A successful creation returns a `201 Created` status and the newly created list entry. The `Location` header contains the URI of the new resource.
 
+    ```bash title="cURL Request"
+    # Start tracking an anime
+    BODY='{
+      "user_id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
+      "anime_id": 5114,
+      "status": "Watching",
+      "current_episode": 1,
+      "score": 8,
+      "started_watching_date": "2023-10-27"
+    }'
+
+    curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list
+    ```
     ```json title="Response Body"
     {
       "user_anime_list": {
@@ -171,32 +184,51 @@ Creates a new entry in a user's anime list. This allows users to start tracking 
       }
     }
     ```
+  </Tab>
+  <Tab value="Smart Caching (New Anime)">
+    If the anime does not exist in the database, you can provide its details to create it on the fly.
+
     ```bash title="cURL Request"
-    # Start tracking an anime
     BODY='{
       "user_id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
-      "anime_id": 5114,
+      "anime_id": 99999,
       "status": "Watching",
       "current_episode": 1,
       "score": 8,
-      "started_watching_date": "2023-10-27"
+      "anime": {
+        "title": "New Anime from Jikan",
+        "synopsis": "This anime was fetched from Jikan and cached automatically.",
+        "cover_image_url": "https://example.com/image.jpg",
+        "total_episodes": 12,
+        "status": "Airing",
+        "release_date": "2023-10-01",
+        "rating": "PG-13",
+        "score": 7.5,
+        "genres": ["Action", "Sci-Fi"],
+        "studios": ["New Studio"],
+        "broadcast_information": "Fridays"
+      }
     }'
 
     curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list
+    ```
+    ```json title="Response Body"
+    {
+      "user_anime_list": {
+        "id": "...",
+        "user_id": "...",
+        "anime_id": 99999,
+        "status": "Watching",
+        "current_episode": 1,
+        "score": 8,
+        // ...
+      }
+    }
     ```
   </Tab>
   <Tab value="422 Validation Error">
     If the request body contains invalid data, a `422 Unprocessable Entity` response is returned with validation errors.
 
-    ```json title="Response Body"
-    {
-      "error": {
-        "status": "must be provided",
-        "current_episode": "must be greater than or equal to 0",
-        "score": "must be between 1 and 10"
-      }
-    }
-    ```
     ```bash title="cURL Request"
     # Request with invalid data
     BODY='{
@@ -208,6 +240,15 @@ Creates a new entry in a user's anime list. This allows users to start tracking 
     }'
 
     curl -i -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list
+    ```
+    ```json title="Response Body"
+    {
+      "error": {
+        "status": "must be provided",
+        "current_episode": "must be greater than or equal to 0",
+        "score": "must be between 1 and 10"
+      }
+    }
     ```
   </Tab>
   <Tab value="409 Duplicate Entry">
@@ -250,6 +291,9 @@ Retrieves a specific user anime list entry by its UUID.
   <Tab value="200 OK">
     A successful response returns a `200 OK` status and the complete list entry object.
 
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+    ```
     ```json title="Response Body"
     {
       "user_anime_list": {
@@ -267,20 +311,17 @@ Retrieves a specific user anime list entry by its UUID.
       }
     }
     ```
-    ```bash title="cURL Request"
-    curl -i localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
-    ```
   </Tab>
   <Tab value="404 Not Found">
     If a list entry with the specified UUID does not exist, a `404 Not Found` response is returned.
 
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/user_anime_list/00000000-0000-0000-0000-000000000000
+    ```
     ```json title="Response Body"
     {
       "error": "the requested resource could not be found"
     }
-    ```
-    ```bash title="cURL Request"
-    curl -i localhost:4000/v1/user_anime_list/00000000-0000-0000-0000-000000000000
     ```
   </Tab>
 </Tabs>
@@ -320,23 +361,6 @@ Fields to update (all optional):
   <Tab value="200 OK">
     A successful update returns a `200 OK` status and the fully updated list entry.
 
-    ```json title="Response Body"
-    {
-      "user_anime_list": {
-        "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-        "user_id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
-        "anime_id": 5114,
-        "status": "Completed",
-        "current_episode": 64,
-        "score": 10,
-        "started_watching_date": "2023-01-01T00:00:00Z",
-        "finished_watching_date": "2023-02-15T00:00:00Z",
-        "created_at": "2023-01-01T10:00:00Z",
-        "updated_at": "2023-02-15T20:00:00Z",
-        "version": 3
-      }
-    }
-    ```
     ```bash title="Increment Episode Count"
     # Update just the current episode
     BODY='{
@@ -357,32 +381,41 @@ Fields to update (all optional):
 
     curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
     ```
+    ```json title="Response Body"
+    {
+      "user_anime_list": {
+        "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+        "user_id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
+        "anime_id": 5114,
+        "status": "Completed",
+        "current_episode": 64,
+        "score": 10,
+        "started_watching_date": "2023-01-01T00:00:00Z",
+        "finished_watching_date": "2023-02-15T00:00:00Z",
+        "created_at": "2023-01-01T10:00:00Z",
+        "updated_at": "2023-02-15T20:00:00Z",
+        "version": 3
+      }
+    }
+    ```
   </Tab>
   <Tab value="404 Not Found">
     If a list entry with the specified UUID does not exist, a `404 Not Found` response is returned.
 
-    ```json title="Response Body"
-    {
-      "error": "the requested resource could not be found"
-    }
-    ```
     ```bash title="cURL Request"
     BODY='{"status": "Completed"}'
 
     curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list/00000000-0000-0000-0000-000000000000
     ```
+    ```json title="Response Body"
+    {
+      "error": "the requested resource could not be found"
+    }
+    ```
   </Tab>
   <Tab value="422 Validation Error">
     If the update data is invalid, a `422 Unprocessable Entity` response is returned.
 
-    ```json title="Response Body"
-    {
-      "error": {
-        "status": "must be one of: Watching, Completed, Dropped, Watch later",
-        "score": "must be between 1 and 10"
-      }
-    }
-    ```
     ```bash title="cURL Request"
     # Invalid status and score
     BODY='{
@@ -391,6 +424,14 @@ Fields to update (all optional):
     }'
 
     curl -i -X PATCH -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+    ```
+    ```json title="Response Body"
+    {
+      "error": {
+        "status": "must be one of: Watching, Completed, Dropped, Watch later",
+        "score": "must be between 1 and 10"
+      }
+    }
     ```
   </Tab>
 </Tabs>
@@ -418,25 +459,25 @@ Deletes a user anime list entry, removing it from the user's tracking list.
   <Tab value="200 OK">
     A successful deletion returns a `200 OK` status and a confirmation message.
 
+    ```bash title="cURL Request"
+    curl -i -X DELETE localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
+    ```
     ```json title="Response Body"
     {
       "message": "user anime list successfully deleted"
     }
     ```
-    ```bash title="cURL Request"
-    curl -i -X DELETE localhost:4000/v1/user_anime_list/a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11
-    ```
   </Tab>
   <Tab value="404 Not Found">
     If a list entry with the specified UUID does not exist, a `404 Not Found` response is returned.
 
+    ```bash title="cURL Request"
+    curl -i -X DELETE localhost:4000/v1/user_anime_list/00000000-0000-0000-0000-000000000000
+    ```
     ```json title="Response Body"
     {
       "error": "the requested resource could not be found"
     }
-    ```
-    ```bash title="cURL Request"
-    curl -i -X DELETE localhost:4000/v1/user_anime_list/00000000-0000-0000-0000-000000000000
     ```
   </Tab>
 </Tabs>

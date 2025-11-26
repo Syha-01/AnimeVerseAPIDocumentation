@@ -1,0 +1,144 @@
+---
+title: Authentication Flow
+description: A step-by-step guide to registering, activating, and authenticating a user.
+---
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Authentication Flow
+
+This guide walks you through the complete process of creating a user account, activating it via email token, and exchanging credentials for an authentication token.
+
+<Steps>
+<Step>
+## 1. Register a User
+
+First, create a new user account. This will trigger a welcome email containing an activation token.
+
+<Tabs items={['cURL Request', 'Response']}>
+  <Tab value="cURL Request">
+    ```bash
+    BODY='{
+      "username": "New User",
+      "email": "user@example.com",
+      "password": "password123"
+    }'
+
+    curl -i -X POST -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users
+    ```
+  </Tab>
+  <Tab value="Response">
+    ```json
+    {
+      "user": {
+        "id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
+        "created_at": "2023-10-27T10:00:00Z",
+        "username": "New User",
+        "email": "user@example.com",
+        "activated": false
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+</Step>
+
+<Step>
+## 2. Get Activation Token
+
+Check the email inbox for `user@example.com`. You will receive an email with a 26-character activation token.
+
+> **Note**: For development/testing, if you don't have email set up, you can check the server logs or the database `tokens` table.
+
+Example Token: `35GDX654ZCHMPJQR5PNDV3UJIE`
+</Step>
+
+<Step>
+## 3. Activate Account
+
+Send the activation token to the activation endpoint. This verifies your email and activates your account.
+
+<Tabs items={['cURL Request', 'Response']}>
+  <Tab value="cURL Request">
+    ```bash
+    BODY='{
+      "token": "35GDX654ZCHMPJQR5PNDV3UJIE"
+    }'
+
+    curl -i -X PUT -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users/activated
+    ```
+  </Tab>
+  <Tab value="Response">
+    ```json
+    {
+      "user": {
+        "id": "f86f401b-57ec-4712-adbb-aefe02a717cf",
+        "created_at": "2023-10-27T10:00:00Z",
+        "username": "New User",
+        "email": "user@example.com",
+        "activated": true
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+</Step>
+
+<Step>
+## 4. Login (Authenticate)
+
+Now that your account is active, exchange your email and password for a Bearer token.
+
+<Tabs items={['cURL Request', 'Response']}>
+  <Tab value="cURL Request">
+    ```bash
+    BODY='{
+      "email": "user@example.com",
+      "password": "password123"
+    }'
+
+    curl -i -X POST -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/tokens/authentication
+    ```
+  </Tab>
+  <Tab value="Response">
+    ```json
+    {
+      "authentication_token": {
+        "token": "YOUR_BEARER_TOKEN_HERE",
+        "expiry": "2025-11-26T17:52:04.283329562-06:00"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+</Step>
+
+<Step>
+## 5. Make Authenticated Request
+
+Use the Bearer token from the previous step to access protected resources.
+
+<Tabs items={['cURL Request', 'Response']}>
+  <Tab value="cURL Request">
+    ```bash
+    # Replace YOUR_BEARER_TOKEN_HERE with the actual token
+    curl -i -H "Authorization: Bearer YOUR_BEARER_TOKEN_HERE" localhost:4000/v1/animes
+    ```
+  </Tab>
+  <Tab value="Response">
+    ```json
+    {
+      "metadata": {
+        "current_page": 1,
+        "page_size": 20,
+        "first_page": 1,
+        "last_page": 1,
+        "total_records": 0
+      },
+      "animes": []
+    }
+    ```
+  </Tab>
+</Tabs>
+</Step>
+</Steps>

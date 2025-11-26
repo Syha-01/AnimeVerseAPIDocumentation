@@ -1,0 +1,174 @@
+---
+title: Admin Setup
+description: How to create and manage admin users with elevated permissions.
+---
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Admin Setup
+
+This guide explains how to create admin users and grant elevated permissions for managing the AnimeVerse API.
+
+## Understanding Admin Permissions
+
+By default, users are granted the `animes:read` permission upon registration. To perform administrative tasks (creating, updating, or deleting animes in the global cache), users need the `animes:write` permission.
+
+## Creating an Admin User
+
+<Tabs items={['Grant to Existing User', 'Create New Admin', 'Production Migration']}>
+  <Tab value="Grant to Existing User">
+    If you already have a registered and activated user, you can grant them admin permissions directly via SQL.
+
+    ```bash title="Grant Admin Permission"
+    # Replace with the actual email
+    psql "postgres://animeverse:verse1@localhost/animeverse?sslmode=disable" -c "
+    INSERT INTO users_permissions
+    VALUES (
+        (SELECT id FROM users WHERE email = 'your-admin@example.com'),
+        (SELECT id FROM permissions WHERE code = 'animes:write')
+    )
+    ON CONFLICT (user_id, permission_id) DO NOTHING;"
+    ```
+
+    The `ON CONFLICT DO NOTHING` clause prevents errors if the permission has already been granted.
+  </Tab>
+  <Tab value="Create New Admin">
+    To create a brand new admin user from scratch, follow these steps:
+
+    **Step 1: Register the User**
+    ```bash
+    BODY='{"username": "Admin User", "email": "admin@example.com", "password": "securepassword123"}'
+    curl -X POST -d "$BODY" localhost:4000/v1/users
+    ```
+
+    **Step 2: Activate the Account**
+    
+    You can either check the email for the activation token, or manually activate in the database:
+    
+    ```bash
+    psql "postgres://animeverse:verse1@localhost/animeverse?sslmode=disable" -c "
+    UPDATE users SET activated = true WHERE email = 'admin@example.com';"
+    ```
+
+    **Step 3: Grant Write Permission**
+    ```bash
+    psql "postgres://animeverse:verse1@localhost/animeverse?sslmode=disable" -c "
+    INSERT INTO users_permissions
+    VALUES (
+        (SELECT id FROM users WHERE email = 'admin@example.com'),
+        (SELECT id FROM permissions WHERE code = 'animes:write')
+    );"
+    ```
+
+    **Step 4: Verify Permissions**
+    ```bash
+    psql "postgres://animeverse:verse1@localhost/animeverse?sslmode=disable" -c "
+    SELECT email, array_agg(permissions.code) as permissions
+    FROM permissions
+    INNER JOIN users_permissions ON users_permissions.permission_id = permissions.id
+    INNER JOIN users ON users_permissions.user_id = users.id
+    WHERE email = 'admin@example.com'
+    GROUP BY email;"
+    ```
+
+    **Expected Output**:
+    ```
+             email          |        permissions         
+    ------------------------+----------------------------
+     admin@example.com      | {animes:read,animes:write}
+    ```
+  </Tab>
+  <Tab value="Production Migration">
+    For production environments, it's best to grant admin permissions via a database migration for version control and repeatability.
+
+    **Create Migration**:
+    ```bash
+    make db/migrations/new name=add_admin_permissions
+    ```
+
+    **Edit the `.up.sql` file**:
+    ```sql
+    INSERT INTO users_permissions
+    VALUES (
+        (SELECT id FROM users WHERE email = 'production-admin@example.com'),
+        (SELECT id FROM permissions WHERE code = 'animes:write')
+    )
+    ON CONFLICT (user_id, permission_id) DO NOTHING;
+    ```
+
+    **Edit the `.down.sql` file**:
+    ```sql
+    DELETE FROM users_permissions
+    WHERE user_id = (SELECT id FROM users WHERE email = 'production-admin@example.com')
+    AND permission_id = (SELECT id FROM permissions WHERE code = 'animes:write');
+    ```
+
+    **Run Migration**:
+    ```bash
+    make db/migrations/up
+    ```
+  </Tab>
+</Tabs>
+
+## Listing All Admins
+
+To view all users with admin (write) permissions, run:
+
+```bash
+psql "postgres://animeverse:verse1@localhost/animeverse?sslmode=disable" -c "
+SELECT email, array_agg(permissions.code) as permissions
+FROM permissions
+INNER JOIN users_permissions ON users_permissions.permission_id = permissions.id
+INNER JOIN users ON users_permissions.user_id = users.id
+WHERE 'animes:write' = ANY(array_agg(permissions.code))
+GROUP BY email;"
+```
+
+## Revoking Admin Permissions
+
+To demote a user from admin to standard user, remove the `animes:write` permission:
+
+```bash
+psql "postgres://animeverse:verse1@localhost/animeverse?sslmode=disable" -c "
+DELETE FROM users_permissions
+WHERE user_id = (SELECT id FROM users WHERE email = 'user-to-demote@example.com')
+AND permission_id = (SELECT id FROM permissions WHERE code = 'animes:write');"
+```
+
+<Callout type="warn" title="Important">
+  This only removes write permissions. The user will still retain `animes:read` and can continue to manage their personal anime list.
+</Callout>
+
+## Testing Admin Access
+
+Once you've granted admin permissions, test the access:
+
+**Step 1: Login as Admin**
+```bash
+BODY='{"email": "admin@example.com", "password": "securepassword123"}'
+curl -X POST -d "$BODY" localhost:4000/v1/tokens/authentication
+```
+
+**Step 2: Use the Token to Access Admin Endpoints**
+```bash
+# Try to create an anime (admin only)
+BODY='{"title": "Test Anime", "synopsis": "Testing admin access"}'
+curl -X POST -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -d "$BODY" localhost:4000/v1/animes
+```
+
+If successful, you'll receive a `201 Created` response. If the user lacks permissions, you'll see:
+```json
+{
+  "error": "your user account does not have the necessary permissions to access this resource"
+}
+```
+
+## Best Practices
+
+<Callout type="info" title="Security Recommendations">
+  - **Limit Admin Accounts**: Only grant `animes:write` to trusted users who need to manage the anime cache.
+  - **Use Strong Passwords**: Require complex passwords for admin accounts.
+  - **Regular Audits**: Periodically review the list of admin users.
+  - **Migrations for Production**: Always use migrations to grant permissions in production for audit trails.
+</Callout>

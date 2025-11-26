@@ -9,7 +9,19 @@ import { Card, Cards } from 'fumadocs-ui/components/card';
 
 Welcome to the **AnimeVerse API** documentation! 🚀
 
-AnimeVerse provides a robust and easy-to-use API for accessing a vast database of anime information. Whether you're building a personal project, a mobile app, or a data analysis tool, our API has everything you need.
+AnimeVerse provides a robust and easy-to-use API for managing user anime lists and preferences. This API works **alongside the [Jikan API](https://jikan.moe/)**, leveraging Jikan for anime discovery and browsing while providing secure user authentication, personalized list management, and smart caching to avoid rate limits.
+
+## How It Works
+
+The AnimeVerse API follows a **"Lazy Caching"** strategy:
+
+1. **Discovery & Browsing**: Your frontend queries the Jikan API directly for anime search and details. This keeps browsing fast and avoids unnecessary backend calls.
+
+2. **Saving to List**: When a user clicks "Save Anime," your frontend sends the anime details (fetched from Jikan) to `POST /v1/user_anime_list`. The API automatically caches the anime in the local database and links it to the user's list.
+
+3. **Viewing Saved Lists**: When users view their profile or saved lists, queries go to `GET /v1/user_anime_list`, fetching data from the AnimeVerse database. This avoids Jikan rate limits and provides instant access to 100+ saved animes.
+
+This hybrid approach gives you the best of both worlds: Jikan's comprehensive anime database for discovery, and AnimeVerse for secure, personalized user data management.
 
 ## Key Features
 

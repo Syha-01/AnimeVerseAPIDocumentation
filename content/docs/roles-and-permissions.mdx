@@ -1,0 +1,278 @@
+---
+title: Roles & Permissions
+description: Understanding the authorization and permission system.
+---
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Roles & Permissions
+
+The AnimeVerse API implements a robust **permission-based authorization system** that controls what actions users can perform. This system ensures that only authenticated and activated users can access protected resources, while also enforcing granular permissions for specific actions.
+
+<Callout type="warn" title="Works With Jikan API">
+  AnimeVerse does **not** replace the Jikan API. Users browse and search animes via **Jikan directly**. This API handles user authentication, personal anime list management, and smart caching to avoid Jikan rate limits.
+</Callout>
+
+## Authorization Hierarchy
+
+The authorization flow follows this hierarchy:
+
+```
+Anonymous User → Authenticated User → Activated User → Permissioned User
+     ↓               ↓                    ↓                   ↓
+  Browse Jikan    Browse Jikan      Save Animes        Manage Cache
+  (No API)        (No API)          to List            (Admin Only)
+```
+
+<Callout type="info" title="Key Concept">
+  **Authentication** determines *who you are*, while **Authorization** determines *what you can do*. The API enforces both before granting access to protected resources.
+</Callout>
+
+## Permission Types
+
+The API currently defines two permissions for anime-related operations:
+
+| Permission | Description | Default Access |
+| :--- | :--- | :--- |
+| `animes:read` | Read anime data from the global cache | All activated users |
+| `animes:write` | Create, update, or delete animes in the global cache | Admins only |
+
+### Permission Scopes
+
+Permissions follow a colon-separated naming convention: `resource:action`
+
+- **Resource**: The entity being accessed (`animes`, `reviews`, etc.)
+- **Action**: The operation being performed (`read`, `write`)
+
+## User Roles
+
+While the API doesn't use explicit "roles," permissions effectively create role-based behavior:
+
+### Standard User (Default)
+- **Automatically Granted**: `animes:read`
+- **Can**: 
+  - **Browse animes**: Via Jikan API directly (no AnimeVerse API call needed)
+  - **Save animes**: `POST /v1/user_anime_list` automatically caches anime details
+  - **Manage their list**: Full CRUD access to `/v1/user_anime_list` endpoints
+  - **View cached animes**: `GET /v1/animes` to query locally cached animes (admin search)
+- **Cannot**: 
+  - Update or delete animes in the global cache (admin only)
+
+### Admin User
+- **Manually Granted**: `animes:read` + `animes:write`
+- **Can**: 
+  - Everything a standard user can do
+  - **Manually manage cache**: `POST/PATCH/DELETE /v1/animes` for direct anime management
+  - Clean up or modify cached anime data
+
+## Protected Endpoints
+
+### Admin Endpoints (Require Permissions)
+
+<Tabs items={['GET (Read)', 'POST/PATCH/DELETE (Write)']}>
+  <Tab value="GET (Read)">
+    **Endpoint**: `GET /v1/animes`
+    
+    **Required**: `animes:read` permission
+    
+    ```bash title="Example Request"
+    curl -H "Authorization: Bearer YOUR_TOKEN" localhost:4000/v1/animes
+    ```
+    
+    **Success Response** (`200 OK`):
+    ```json
+    {
+      "metadata": {
+        "current_page": 1,
+        "page_size": 20,
+        "total_records": 150
+      },
+      "animes": [...]
+    }
+    ```
+  </Tab>
+  <Tab value="POST/PATCH/DELETE (Write)">
+    **Endpoints**: 
+    - `POST /v1/animes`
+    - `PATCH /v1/animes/:id`
+    - `DELETE /v1/animes/:id`
+    
+    **Required**: `animes:write` permission
+    
+    ```bash title="Example Request"
+    BODY='{"title": "New Anime", "synopsis": "..."}'
+    curl -X POST -H "Authorization: Bearer ADMIN_TOKEN" \
+      -d "$BODY" localhost:4000/v1/animes
+    ```
+    
+    **Success Response** (`201 Created`): See [Animes](/docs/animes) for details.
+  </Tab>
+</Tabs>
+
+### User Endpoints (Require Activation Only)
+
+All `/v1/user_anime_list` endpoints require an **activated account** but do **not** require special permissions. Any logged-in user can manage their own list.
+
+<Callout type="info" title="Lazy Caching">
+  When you `POST /v1/user_anime_list`, include the full anime details from Jikan. If the anime doesn't exist in the local cache, it's automatically inserted before linking to your list. This prevents foreign key errors and avoids Jikan rate limits when viewing your list later.
+</Callout>
+
+```bash title="Example: Save Anime to List (With Lazy Caching)"
+BODY='{
+  "user_id": "YOUR_USER_ID",
+  "anime_id": 5114,
+  "status": "Watching",
+  "current_episode": 1,
+  "anime": {
+    "title": "Fullmetal Alchemist: Brotherhood",
+    "synopsis": "Two brothers search for the Philosopher's Stone...",
+    "cover_image_url": "https://cdn.myanimelist.net/images/anime/1223/96541.jpg",
+    "total_episodes": 64,
+    "status": "Finished Airing",
+    "release_date": "2009-04-05",
+    "rating": "R - 17+ (violence & profanity)",
+    "score": 9.1,
+    "genres": ["Action", "Adventure", "Drama"],
+    "studios": ["Bones"],
+    "broadcast_information": "Sundays at 17:00 (JST)"
+  }
+}'
+
+curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \
+  -d "$BODY" localhost:4000/v1/user_anime_list
+```
+
+## Authorization Errors
+
+The API returns specific HTTP status codes and error messages for authorization failures:
+
+<Tabs items={['401 Unauthorized', '403 Forbidden (Inactive)', '403 Forbidden (Permission)']}>
+  <Tab value="401 Unauthorized">
+    **When**: You try to access a protected endpoint without a valid Bearer token.
+    
+    **Status Code**: `401 Unauthorized`
+    
+    ```bash title="Example Request"
+    curl localhost:4000/v1/animes
+    ```
+    
+    ```json title="Error Response"
+    {
+      "error": "you must be authenticated to access this resource"
+    }
+    ```
+    
+    **Solution**: Include a valid Bearer token in the `Authorization` header.
+  </Tab>
+  <Tab value="403 Forbidden (Inactive)">
+    **When**: You are authenticated but your account has not been activated via email yet.
+    
+    **Status Code**: `403 Forbidden`
+    
+    ```json title="Error Response"
+    {
+      "error": "your user account must be activated to access this resource"
+    }
+    ```
+    
+    **Solution**: Check your email for the activation token and activate your account via `PUT /v1/users/activated`.
+  </Tab>
+  <Tab value="403 Forbidden (Permission)">
+    **When**: You are authenticated and activated, but lack the specific permission for the action.
+    
+    **Status Code**: `403 Forbidden`
+    
+    ```bash title="Example: Standard User Trying to POST"
+    # Standard users lack animes:write permission
+    curl -X POST -H "Authorization: Bearer USER_TOKEN" \
+      -d '{}' localhost:4000/v1/animes
+    ```
+    
+    ```json title="Error Response"
+    {
+      "error": "your user account does not have the necessary permissions to access this resource"
+    }
+    ```
+    
+    **Solution**: Contact an administrator to grant you the required permission.
+  </Tab>
+</Tabs>
+
+## How Permissions Are Granted
+
+### New User Registration
+
+When a user registers via `POST /v1/users`, they are automatically granted the `animes:read` permission after account creation.
+
+```bash title="Registration Flow"
+# 1. Register
+BODY='{"username": "Alice", "email": "alice@example.com", "password": "secure123"}'
+curl -X POST -d "$BODY" localhost:4000/v1/users
+
+# 2. User is created with animes:read permission automatically
+# 3. Activation email is sent
+# 4. User activates account → can now access protected endpoints
+```
+
+### Manual Permission Grants (Admin Only)
+
+Admins can be granted the `animes:write` permission via database migrations or direct SQL:
+
+```sql
+-- Grant write permission to a user
+INSERT INTO users_permissions
+VALUES (
+    (SELECT id FROM users WHERE email = 'admin@example.com'),
+    (SELECT id FROM permissions WHERE code = 'animes:write')
+);
+```
+
+## Checking User Permissions
+
+To view all permissions for all users, run this SQL query:
+
+```sql
+SELECT email, array_agg(permissions.code) as permissions
+FROM permissions
+INNER JOIN users_permissions ON users_permissions.permission_id = permissions.id
+INNER JOIN users ON users_permissions.user_id = users.id
+GROUP BY email;
+```
+
+**Example Output**:
+```
+         email          |        permissions         
+------------------------+----------------------------
+ alice@example.com      | {animes:read}
+ admin@example.com      | {animes:read,animes:write}
+```
+
+## Best Practices
+
+<Callout type="warn" title="Permission Design">
+  - **Least Privilege**: Grant users only the minimum permissions they need.
+  - **Activation Required**: Always require account activation before granting access to protected resources.
+  - **Audit Trails**: Consider logging permission changes for security auditing.
+</Callout>
+
+### For Frontend Developers
+
+1. **Handle 401 Errors**: Redirect to login page.
+2. **Handle 403 (Inactive)**: Show activation reminder with link to resend email.
+3. **Handle 403 (Permission)**: Display a user-friendly message explaining the limitation.
+
+### For Backend Developers
+
+1. **Always Check Permissions**: Use the `requirePermission` middleware for admin endpoints.
+2. **Check Activation**: Use `requireActivatedUser` for user-facing endpoints.
+3. **Graceful Degradation**: Return clear error messages to help users understand why access was denied.
+
+## Future Permissions
+
+As the API grows, additional permissions may be added:
+
+- `reviews:write` - Create and edit reviews
+- `reviews:delete` - Delete any review (moderator)
+- `users:manage` - Manage other users (admin)
+
+Permissions are stored in the `permissions` table and can be extended without code changes.

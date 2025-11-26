@@ -1,5 +1,8 @@
 {
   "index": "Introduction",
+  "authentication-flow": "Authentication Flow",
+  "roles-and-permissions": "Roles & Permissions",
+  "admin-setup": "Admin Setup",
   "users": "Users & Authentication",
   "animes": "Animes",
   "user-anime-list": "User Anime List",

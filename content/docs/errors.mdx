@@ -22,6 +22,9 @@ Returns the current status of the API server along with environment and version 
 
 <Tabs items={['200 OK']}>
   <Tab value="200 OK">
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/healthcheck
+    ```
     ```json title="Response Body"
     {
       "status": "available",
@@ -30,9 +33,6 @@ Returns the current status of the API server along with environment and version 
         "version": "1.0.0"
       }
     }
-    ```
-    ```bash title="cURL Request"
-    curl -i localhost:4000/v1/healthcheck
     ```
   </Tab>
 </Tabs>
@@ -66,17 +66,17 @@ To ensure fair usage and system stability, the API implements IP-based rate limi
 If you exceed these limits, the API will return a `429 Too Many Requests` error.
 
 <Tabs items={['429 Response', 'Example Request']}>
+  <Tab value="Example Request">
+    To test this, you can send multiple requests in rapid succession.
+    ```bash title="cURL Request"
+    for i in {1..10}; do curl -i localhost:4000/v1/healthcheck; done
+    ```
+  </Tab>
   <Tab value="429 Response">
     ```json title="Response Body"
     {
       "error": "rate limit exceeded"
     }
-    ```
-  </Tab>
-  <Tab value="Example Request">
-    To test this, you can send multiple requests in rapid succession.
-    ```bash title="cURL Request"
-    for i in {1..10}; do curl -i localhost:4000/v1/healthcheck; done
     ```
   </Tab>
 </Tabs>
@@ -111,40 +111,40 @@ The API uses standard HTTP status codes to indicate the success or failure of a 
   <Tab value="400 Bad Request">
     Occurs when sending invalid JSON or malformed data.
 
-    ```json title="Response Body"
-    {
-      "error": "body must not be empty"
-    }
-    ```
     ```bash title="cURL Request"
     # Sending an empty body to a POST endpoint
     BODY='{}'
     curl -i -X POST -d "$BODY" localhost:4000/v1/animes
     ```
+    ```json title="Response Body"
+    {
+      "error": "body must not be empty"
+    }
+    ```
   </Tab>
   <Tab value="404 Not Found">
     Occurs when requesting a resource that doesn't exist.
 
+    ```bash title="cURL Request"
+    curl -i localhost:4000/v1/unknown_endpoint
+    ```
     ```json title="Response Body"
     {
       "error": "the requested resource could not be found"
     }
     ```
-    ```bash title="cURL Request"
-    curl -i localhost:4000/v1/unknown_endpoint
-    ```
   </Tab>
   <Tab value="405 Method Not Allowed">
     Occurs when using an unsupported HTTP method.
 
+    ```bash title="cURL Request"
+    # Sending a DELETE request to the collection endpoint
+    curl -i -X DELETE localhost:4000/v1/animes
+    ```
     ```json title="Response Body"
     {
       "error": "method is not supported for this resource"
     }
-    ```
-    ```bash title="cURL Request"
-    # Sending a DELETE request to the collection endpoint
-    curl -i -X DELETE localhost:4000/v1/animes
     ```
   </Tab>
   <Tab value="500 Internal Server Error">
