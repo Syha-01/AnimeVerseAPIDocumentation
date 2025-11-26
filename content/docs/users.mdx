@@ -284,3 +284,80 @@ CREATE TABLE tokens (
     scope TEXT NOT NULL
 );
 ```
+
+<hr className="my-8" />
+
+# Authentication
+
+The API uses stateful token-based authentication. Users must exchange their credentials for a Bearer token to access protected endpoints.
+
+<Card title="POST /v1/tokens/authentication">
+
+Authenticate a user and retrieve a Bearer token.
+
+#### Request Body
+
+| Field      | Type   | Description           | Required |
+| ---------- | ------ | --------------------- | -------- |
+| `email`    | string | User's email address. | Yes      |
+| `password` | string | User's password.      | Yes      |
+
+#### Responses & Examples
+
+<Tabs items={['201 Created', '401 Unauthorized']}>
+  <Tab value="201 Created">
+    Returns a Bearer token valid for 24 hours.
+
+    ```json title="Response Body"
+    {
+      "authentication_token": {
+        "token": "35GDX654ZCHMPJQR5PNDV3UJIE",
+        "expiry": "2025-11-26T17:52:04.283329562-06:00"
+      }
+    }
+    ```
+    ```bash title="cURL Request"
+    BODY='{
+      "email": "test@example.com",
+      "password": "password123"
+    }'
+
+    curl -i -X POST -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/tokens/authentication
+    ```
+  </Tab>
+  <Tab value="401 Unauthorized">
+    Returns an error if credentials are invalid or user is not found.
+
+    ```json title="Response Body"
+    {
+      "error": "invalid authentication credentials"
+    }
+    ```
+  </Tab>
+</Tabs>
+</Card>
+
+## Token Types
+
+The API uses two distinct types of tokens:
+
+1.  **Activation Token (Email Token)**
+    *   **Purpose**: Verify email address ownership.
+    *   **Source**: Sent via email after registration.
+    *   **Usage**: Sent once to `PUT /v1/users/activated`.
+    *   **Result**: Activates the account. Does **not** log the user in.
+
+2.  **Authentication Token (Bearer Token)**
+    *   **Purpose**: Prove identity for API requests (Login).
+    *   **Source**: Returned by `POST /v1/tokens/authentication`.
+    *   **Usage**: Sent in the `Authorization` header for protected requests.
+    *   **Result**: Authenticates the user for the session (24 hours).
+
+## Anonymous Users
+
+The API supports anonymous access for public endpoints (like healthcheck or viewing public data).
+
+*   **Authenticated Request**: Includes `Authorization: Bearer <token>` header. The API identifies the user.
+*   **Anonymous Request**: No `Authorization` header. The API treats the user as an `AnonymousUser`.
+
+If you try to access a protected endpoint without a token, or with an invalid token, you will receive a `401 Unauthorized` response.
