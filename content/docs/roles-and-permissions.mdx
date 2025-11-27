@@ -100,7 +100,7 @@ While the API doesn't use explicit "roles," permissions effectively create role-
     **Required**: `animes:write` permission
     
     ```bash title="Example Request"
-    BODY='{"title": "New Anime", "synopsis": "..."}'
+    BODY='{"title": "New Anime", "synopsis": "A detailed synopsis of the new anime."}'
     curl -X POST -H "Authorization: Bearer ADMIN_TOKEN" \
       -d "$BODY" localhost:4000/v1/animes
     ```

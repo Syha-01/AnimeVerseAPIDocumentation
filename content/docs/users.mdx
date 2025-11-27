@@ -151,9 +151,9 @@ Activate a user account using the activation token sent via email during registr
     A successful activation returns a `200 OK` status and the updated user object with `activated: true`.
 
     ```bash title="cURL Request"
-    # Replace "..." with the actual token from the email
+    # Replace "ACTIVATION_TOKEN" with the actual token from the email
     BODY='{
-      "token": "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "token": "ACTIVATION_TOKEN"
     }'
 
     curl -i -X PUT -H "Content-Type: application/json" -d "$BODY" localhost:4000/v1/users/activated
@@ -319,8 +319,8 @@ Authenticate a user and retrieve a Bearer token.
     ```json title="Response Body"
     {
       "authentication_token": {
-        "token": "35GDX654ZCHMPJQR5PNDV3UJIE",
-        "expiry": "2025-11-26T17:52:04.283329562-06:00"
+        "token": "YOUR_TOKEN_HERE",
+        "expiry": "2025-11-27T10:00:00Z"
       }
     }
     ```

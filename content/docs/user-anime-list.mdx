@@ -215,13 +215,17 @@ Creates a new entry in a user's anime list. This allows users to start tracking 
     ```json title="Response Body"
     {
       "user_anime_list": {
-        "id": "...",
-        "user_id": "...",
+        "id": "USER_ANIME_LIST_ID",
+        "user_id": "YOUR_USER_ID",
         "anime_id": 99999,
         "status": "Watching",
         "current_episode": 1,
         "score": 8,
-        // ...
+        "started_watching_date": "2023-10-27T00:00:00Z",
+        "finished_watching_date": "0001-01-01T00:00:00Z",
+        "created_at": "2023-10-27T10:00:00Z",
+        "updated_at": "2023-10-27T10:00:00Z",
+        "version": 1
       }
     }
     ```
